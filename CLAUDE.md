@@ -4,6 +4,12 @@ Persistent geographic foundation mod for a modular Minecraft project (Minecraft 
 
 ## Context directory — read this first
 
+`context/` is a **separate private repo** (https://github.com/CerealKlla/cartographyr-context), not part of this one — it's listed in `.gitignore` here and must never be committed to this repo. It's cloned as a subdirectory at `context/` for local convenience. If this directory is missing (e.g. a fresh clone of just this repo), restore it with:
+
+```
+git clone https://github.com/CerealKlla/cartographyr-context.git context
+```
+
 Before searching source for architecture, ownership boundaries, API shape, or "why does this work this way," check `context/` first. It's maintained specifically to answer those questions cheaply:
 
 - `context/design-document.md` — the authoritative design spec: architecture, entity model, full public API surface, storage design, implementation phases, testing strategy. Start here for anything about intended shape or scope.
@@ -14,6 +20,7 @@ Before searching source for architecture, ownership boundaries, API shape, or "w
 - When a design decision is made that conflicts with or is absent from design-document.md, update design-document.md directly and add a dated entry to decisions.md explaining the change.
 - When a class is added or its public surface changes, add or update its file in `context/classes/`.
 - Don't let source and these docs drift — treat updating them as part of finishing the change, not optional cleanup.
+- `context/` has its own git history, independent of this repo's commits. Commit and push changes there separately (`git -C context add . && git -C context commit -m "..." && git -C context push`) — editing the files alone doesn't back them up.
 
 ## Status
 
