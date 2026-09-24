@@ -11,11 +11,12 @@ import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 
 import com.github.cerealklla.cartographyr.api.Cartography;
+import com.github.cerealklla.cartographyr.client.ClientLocationState;
 import com.github.cerealklla.cartographyr.geo.EntityId;
 import com.github.cerealklla.cartographyr.geo.GeographicEntity;
 import com.github.cerealklla.cartographyr.natural.NaturalRegionDiscovery;
+import com.github.cerealklla.cartographyr.network.LocationPayload;
 
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
@@ -25,8 +26,11 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 
 // The value here must match the modId entry in META-INF/neoforge.mods.toml (sourced from mod_id in gradle.properties)
 @Mod(CartographyrMod.MODID)
@@ -58,6 +62,7 @@ public class CartographyrMod {
 
     public CartographyrMod(IEventBus modEventBus, ModContainer modContainer) {
         modEventBus.addListener(this::commonSetup);
+        modEventBus.addListener(this::registerPayloads);
 
         // Game-bus listener (not the mod bus above) — this is what actually triggers
         // CartographySavedData.TYPE's registration at real server boot, proving the wiring
@@ -69,10 +74,51 @@ public class CartographyrMod {
         LOGGER.info("Cartographyr common setup");
     }
 
+    // Single registration point, including the handler — RegisterPayloadHandlersEvent shares one
+    // global network registry per modid, so also registering from CartographyrModClient (confirmed
+    // via a real client boot crash, "already registered") isn't an option. The handler lambda
+    // touches client-only state (ClientLocationState), but that's safe here: it's only ever
+    // *invoked* when this payload is received, which never happens on a dedicated server (servers
+    // only send it) -- referencing it is fine even though this class also loads on the server.
+    private void registerPayloads(RegisterPayloadHandlersEvent event) {
+        event.registrar("1").playToClient(LocationPayload.TYPE, LocationPayload.STREAM_CODEC,
+                (payload, context) -> ClientLocationState.set(payload.name()));
+    }
+
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
         int count = Cartography.getEntitiesAt(event.getServer(), Level.OVERWORLD, 0, 0).size();
         LOGGER.info("Cartographyr geographic data loaded, {} entities at overworld origin", count);
+    }
+
+    /**
+     * Proactively syncs the current location on (re)join. Without this, a player reconnecting
+     * without having moved would see a blank overlay indefinitely: {@link #notifyIfChanged} only
+     * sends an update when the detected region actually *changes*, but the client's overlay state
+     * is fresh/blank on every new connection regardless of whether the server-side
+     * {@link #lastNotifiedRegion} entry for them is unchanged from a previous session.
+     */
+    @SubscribeEvent
+    public void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) {
+            return;
+        }
+        ServerLevel level = (ServerLevel) player.level();
+        int x = player.getBlockX();
+        int z = player.getBlockZ();
+
+        Set<GeographicEntity> here = Cartography.getEntitiesAt(level, x, z);
+        GeographicEntity entity = here.isEmpty()
+                ? NaturalRegionDiscovery.discover(level, player.blockPosition()).orElse(null)
+                : here.iterator().next();
+        if (entity == null) {
+            return;
+        }
+
+        UUID playerId = player.getUUID();
+        pendingRegion.remove(playerId);
+        lastNotifiedRegion.put(playerId, entity.id());
+        sendLocation(player, entity);
     }
 
     @SubscribeEvent
@@ -120,9 +166,12 @@ public class CartographyrMod {
         // Confirmed: this candidate was also seen on the previous check.
         pendingRegion.remove(playerId);
         lastNotifiedRegion.put(playerId, entity.id());
+        sendLocation(player, entity);
+    }
 
+    private void sendLocation(ServerPlayer player, GeographicEntity entity) {
         String name = entity.name().orElse("an unnamed place");
         LOGGER.info("Player {} entered {} ('{}')", player.getName().getString(), entity.id(), name);
-        player.sendSystemMessage(Component.literal("You have entered " + name));
+        PacketDistributor.sendToPlayer(player, new LocationPayload(name));
     }
 }
