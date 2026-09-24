@@ -12,11 +12,14 @@ import com.mojang.serialization.DataResult;
 
 import com.github.cerealklla.cartographyr.geo.Classification;
 import com.github.cerealklla.cartographyr.geo.EntityDefinition;
+import com.github.cerealklla.cartographyr.geo.EntityId;
 import com.github.cerealklla.cartographyr.geo.EntityType;
 import com.github.cerealklla.cartographyr.geo.Geometry;
 import com.github.cerealklla.cartographyr.geo.GeographicEntity;
 import com.github.cerealklla.cartographyr.geo.LifecycleState;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.Level;
@@ -52,6 +55,60 @@ class CartographySavedDataTest {
 
         Set<GeographicEntity> atOrigin = reloaded.getEntitiesAt(Level.OVERWORLD, 0, 0);
         assertTrue(atOrigin.stream().anyMatch(e -> e.id().equals(created.id())));
+    }
+
+    @Test
+    void structureAssociationSurvivesReloadAndCompletesLifecycle() {
+        CartographySavedData original = new CartographySavedData();
+
+        GeographicEntity created = original.createEntity(new EntityDefinition(
+                Level.OVERWORLD,
+                Classification.CONSTRUCTED,
+                EntityType.SETTLEMENT,
+                Optional.of("Capital City of Nonce"),
+                new Geometry.Point(0, 0),
+                LifecycleState.PLANNED
+        ));
+
+        GlobalPos structure = GlobalPos.of(Level.OVERWORLD, new BlockPos(0, 64, 0));
+        Optional<GeographicEntity> afterAssociate = original.associateStructure(created.id(), structure);
+        assertTrue(afterAssociate.isPresent());
+        assertEquals(Set.of(structure), afterAssociate.get().structureReferences());
+        assertEquals(Optional.of(created.id()), original.getEntityForStructure(structure));
+
+        original.updateEntity(created.id(), entity -> entity.withLifecycleState(LifecycleState.REALIZED));
+
+        CartographySavedData reloaded = simulateReload(original);
+
+        Optional<GeographicEntity> reloadedEntity = reloaded.getEntity(created.id());
+        assertTrue(reloadedEntity.isPresent());
+        assertEquals(LifecycleState.REALIZED, reloadedEntity.get().lifecycleState());
+        assertEquals(Set.of(structure), reloaded.getAssociatedStructures(created.id()));
+        assertEquals(Optional.of(created.id()), reloaded.getEntityForStructure(structure));
+    }
+
+    @Test
+    void associateStructureFailsIfAlreadyOwnedByAnotherEntity() {
+        CartographySavedData data = new CartographySavedData();
+        GlobalPos structure = GlobalPos.of(Level.OVERWORLD, new BlockPos(0, 64, 0));
+
+        GeographicEntity first = data.createEntity(new EntityDefinition(
+                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT,
+                Optional.empty(), new Geometry.Point(0, 0), LifecycleState.PLANNED
+        ));
+        GeographicEntity second = data.createEntity(new EntityDefinition(
+                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT,
+                Optional.empty(), new Geometry.Point(100, 100), LifecycleState.PLANNED
+        ));
+
+        assertTrue(data.associateStructure(first.id(), structure).isPresent());
+
+        Optional<GeographicEntity> conflicting = data.associateStructure(second.id(), structure);
+        assertTrue(conflicting.isEmpty());
+        assertEquals(Optional.of(first.id()), data.getEntityForStructure(structure));
+
+        EntityId secondId = second.id();
+        assertEquals(Set.of(), data.getAssociatedStructures(secondId));
     }
 
     // Goes through CartographySavedData.TYPE's own codec factory, not a private test-only codec,

@@ -16,6 +16,7 @@ import com.github.cerealklla.cartographyr.geo.EntityId;
 import com.github.cerealklla.cartographyr.geo.GeographicEntity;
 import com.github.cerealklla.cartographyr.geo.LifecycleState;
 
+import net.minecraft.core.GlobalPos;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
@@ -43,6 +44,9 @@ public final class CartographySavedData extends SavedData {
     private long nextEntityId;
     private final Map<EntityId, GeographicEntity> entities;
     private final SpatialIndex spatialIndex = new SpatialIndex();
+    // Reverse lookup (design doc Section 7.3). Not persisted, same as spatialIndex — rebuilt by
+    // reindex() from entities' own structureReferences, which are the actual source of truth.
+    private final Map<GlobalPos, EntityId> structureIndex = new HashMap<>();
 
     // Package-private (not private) so the test suite in this same package can construct a fresh
     // instance directly without going through the SavedDataType machinery.
@@ -54,7 +58,7 @@ public final class CartographySavedData extends SavedData {
         this.schemaVersion = schemaVersion;
         this.nextEntityId = nextEntityId;
         this.entities = entities;
-        this.spatialIndex.rebuild(entities.values());
+        reindex();
     }
 
     private static Codec<CartographySavedData> codec() {
@@ -66,12 +70,23 @@ public final class CartographySavedData extends SavedData {
                 new CartographySavedData(schemaVersion, nextEntityId, new HashMap<>(entities))));
     }
 
+    /** Rebuilds both secondary indices from {@link #entities}, the actual source of truth. */
+    private void reindex() {
+        spatialIndex.rebuild(entities.values());
+        structureIndex.clear();
+        for (GeographicEntity entity : entities.values()) {
+            for (GlobalPos structureReference : entity.structureReferences()) {
+                structureIndex.put(structureReference, entity.id());
+            }
+        }
+    }
+
     /** @apiNote Not the intended integration point — use {@code Cartography.createEntity} instead. */
     public GeographicEntity createEntity(EntityDefinition definition) {
         EntityId id = new EntityId(nextEntityId++);
         GeographicEntity entity = GeographicEntity.create(id, definition);
         entities.put(id, entity);
-        spatialIndex.rebuild(entities.values());
+        reindex();
         setDirty();
         return entity;
     }
@@ -89,7 +104,7 @@ public final class CartographySavedData extends SavedData {
         }
         GeographicEntity updated = update.apply(current);
         entities.put(id, updated);
-        spatialIndex.rebuild(entities.values());
+        reindex();
         setDirty();
         return Optional.of(updated);
     }
@@ -110,5 +125,30 @@ public final class CartographySavedData extends SavedData {
             }
         }
         return result;
+    }
+
+    /**
+     * @apiNote Not the intended integration point — use {@code Cartography.associateStructure} instead.
+     * Fails (returns empty) rather than reassociating if {@code structureReference} already points
+     * at a different entity — otherwise the rebuilt reverse index would silently let whichever
+     * entity is iterated last win, with no error.
+     */
+    public Optional<GeographicEntity> associateStructure(EntityId id, GlobalPos structureReference) {
+        Optional<EntityId> existingOwner = getEntityForStructure(structureReference);
+        if (existingOwner.isPresent() && !existingOwner.get().equals(id)) {
+            return Optional.empty();
+        }
+        return updateEntity(id, entity -> entity.withAddedStructureReference(structureReference));
+    }
+
+    /** @apiNote Not the intended integration point — use {@code Cartography.getAssociatedStructures} instead. */
+    public Set<GlobalPos> getAssociatedStructures(EntityId id) {
+        GeographicEntity entity = entities.get(id);
+        return entity == null ? Set.of() : entity.structureReferences();
+    }
+
+    /** @apiNote Not the intended integration point — use {@code Cartography.getEntityForStructure} instead. */
+    public Optional<EntityId> getEntityForStructure(GlobalPos structureReference) {
+        return Optional.ofNullable(structureIndex.get(structureReference));
     }
 }

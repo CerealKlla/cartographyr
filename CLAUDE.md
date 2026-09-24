@@ -32,7 +32,9 @@ Phase 0 (Version/Loader Lock) — decided 2026-09-23, see [context/decisions.md]
 
 Phase 1 minimal milestone (design-document.md Appendix B) — implemented 2026-09-23, see [context/decisions.md](context/decisions.md):
 - `.geo`/`.storage`/`.api` package split; `EntityId`, `GeographicEntity`, point/bounds `Geometry`, world-level `CartographySavedData`, chunk-grid `SpatialIndex`, and the `Cartography` public facade (create/get/update/retire/getEntitiesAt).
-- `./gradlew build` and `./gradlew test` both green (2 codec round-trip tests + 1 save/reload-equivalent test). Manually smoke-tested via `./gradlew runServer` — boots clean, `CartographyrMod`'s `ServerStartingEvent` listener confirms the wiring works at real server boot.
+- `EntityType` simplified since: dropped VILLAGE/TOWN/CITY tier and RUIN, collapsed to `REGION, MOUNTAIN, RIVER, SETTLEMENT, MINE, ROAD` — settlement tier isn't Cartography's to classify, and active-vs-abandoned is `LifecycleState`'s job, not a type.
+- Structure Association (Section 5.7) — `associateStructure`/`getAssociatedStructures`/`getEntityForStructure` on `Cartography`, backed by vanilla `GlobalPos` and a `structureIndex` reverse lookup on `CartographySavedData`. Completes the PLANNED→REALIZED flow from Section 4.
+- `./gradlew build` and `./gradlew test` both green (6 tests total). Manually smoke-tested via `./gradlew runServer` — boots clean, `CartographyrMod`'s `ServerStartingEvent` listener confirms the wiring works at real server boot.
 - See [context/classes/](context/classes/) for per-class reference.
 
-Next: expand toward the rest of Phase 1/2 per design-document.md Section 12 (characteristics, amenities, history, structure association) as needed, or move to whichever phase the next real feature requires — no obligation to follow the phase list in strict order.
+Next: characteristics, amenities, history, naming (Sections 5.3/5.4/5.5/5.6), or whichever phase the next real feature requires — no obligation to follow the phase list in strict order.

@@ -9,6 +9,7 @@ import com.github.cerealklla.cartographyr.geo.EntityId;
 import com.github.cerealklla.cartographyr.geo.GeographicEntity;
 import com.github.cerealklla.cartographyr.storage.CartographySavedData;
 
+import net.minecraft.core.GlobalPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -71,5 +72,34 @@ public final class Cartography {
 
     public static Set<GeographicEntity> getEntitiesAt(ServerLevel level, int x, int z) {
         return getEntitiesAt(level.getServer(), level.dimension(), x, z);
+    }
+
+    /**
+     * Links a generated structure's location to a geographic entity — typically the step between
+     * creating a PLANNED entity and marking it REALIZED (design doc Section 4). Fails (returns
+     * empty) if {@code structureReference} is already associated with a different entity.
+     */
+    public static Optional<GeographicEntity> associateStructure(MinecraftServer server, EntityId id, GlobalPos structureReference) {
+        return data(server).associateStructure(id, structureReference);
+    }
+
+    public static Optional<GeographicEntity> associateStructure(ServerLevel level, EntityId id, GlobalPos structureReference) {
+        return associateStructure(level.getServer(), id, structureReference);
+    }
+
+    public static Set<GlobalPos> getAssociatedStructures(MinecraftServer server, EntityId id) {
+        return data(server).getAssociatedStructures(id);
+    }
+
+    public static Set<GlobalPos> getAssociatedStructures(ServerLevel level, EntityId id) {
+        return getAssociatedStructures(level.getServer(), id);
+    }
+
+    public static Optional<EntityId> getEntityForStructure(MinecraftServer server, GlobalPos structureReference) {
+        return data(server).getEntityForStructure(structureReference);
+    }
+
+    public static Optional<EntityId> getEntityForStructure(ServerLevel level, GlobalPos structureReference) {
+        return getEntityForStructure(level.getServer(), structureReference);
     }
 }

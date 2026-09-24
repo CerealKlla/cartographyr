@@ -1,10 +1,14 @@
 package com.github.cerealklla.cartographyr.geo;
 
+import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
+import net.minecraft.core.GlobalPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
@@ -14,8 +18,8 @@ import net.minecraft.world.level.Level;
  * Immutable — updates go through the "with" methods below, producing a new instance that the
  * storage layer replaces the old one with (see {@code CartographySavedData#updateEntity}).
  *
- * This is the trimmed first-milestone shape: no characteristics, amenities, history, structure
- * references, source, or extension data yet (design document Section 3 lists the full field set).
+ * This is the trimmed first-milestone shape: no characteristics, amenities, history, source, or
+ * extension data yet (design document Section 3 lists the full field set).
  */
 public record GeographicEntity(
         EntityId id,
@@ -24,7 +28,8 @@ public record GeographicEntity(
         EntityType type,
         Optional<String> name,
         Geometry geometry,
-        LifecycleState lifecycleState
+        LifecycleState lifecycleState,
+        Set<GlobalPos> structureReferences
 ) {
     public static final Codec<GeographicEntity> CODEC = RecordCodecBuilder.create(i -> i.group(
             EntityId.CODEC.fieldOf("id").forGetter(GeographicEntity::id),
@@ -33,7 +38,9 @@ public record GeographicEntity(
             EntityType.CODEC.fieldOf("type").forGetter(GeographicEntity::type),
             Codec.STRING.optionalFieldOf("name").forGetter(GeographicEntity::name),
             Geometry.CODEC.fieldOf("geometry").forGetter(GeographicEntity::geometry),
-            LifecycleState.CODEC.fieldOf("lifecycle_state").forGetter(GeographicEntity::lifecycleState)
+            LifecycleState.CODEC.fieldOf("lifecycle_state").forGetter(GeographicEntity::lifecycleState),
+            Codec.list(GlobalPos.CODEC).xmap(Set::copyOf, List::copyOf)
+                    .fieldOf("structure_references").forGetter(GeographicEntity::structureReferences)
     ).apply(i, GeographicEntity::new));
 
     public static GeographicEntity create(EntityId id, EntityDefinition definition) {
@@ -44,19 +51,26 @@ public record GeographicEntity(
                 definition.type(),
                 definition.name(),
                 definition.geometry(),
-                definition.lifecycleState()
+                definition.lifecycleState(),
+                Set.of()
         );
     }
 
     public GeographicEntity withLifecycleState(LifecycleState newState) {
-        return new GeographicEntity(id, dimension, classification, type, name, geometry, newState);
+        return new GeographicEntity(id, dimension, classification, type, name, geometry, newState, structureReferences);
     }
 
     public GeographicEntity withGeometry(Geometry newGeometry) {
-        return new GeographicEntity(id, dimension, classification, type, name, newGeometry, lifecycleState);
+        return new GeographicEntity(id, dimension, classification, type, name, newGeometry, lifecycleState, structureReferences);
     }
 
     public GeographicEntity withName(Optional<String> newName) {
-        return new GeographicEntity(id, dimension, classification, type, newName, geometry, lifecycleState);
+        return new GeographicEntity(id, dimension, classification, type, newName, geometry, lifecycleState, structureReferences);
+    }
+
+    public GeographicEntity withAddedStructureReference(GlobalPos structureReference) {
+        Set<GlobalPos> updated = new HashSet<>(structureReferences);
+        updated.add(structureReference);
+        return new GeographicEntity(id, dimension, classification, type, name, geometry, lifecycleState, Set.copyOf(updated));
     }
 }
