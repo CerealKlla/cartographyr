@@ -20,7 +20,7 @@ class GeographicEntityCodecTest {
                 new EntityId(42L),
                 Level.OVERWORLD,
                 Classification.CONSTRUCTED,
-                EntityType.CITY,
+                EntityType.SETTLEMENT,
                 Optional.of("Capital City of Nonce"),
                 new Geometry.Point(100, -50),
                 LifecycleState.PLANNED

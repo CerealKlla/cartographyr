@@ -37,7 +37,7 @@ class CartographySavedDataTest {
         GeographicEntity created = original.createEntity(new EntityDefinition(
                 Level.OVERWORLD,
                 Classification.CONSTRUCTED,
-                EntityType.CITY,
+                EntityType.SETTLEMENT,
                 Optional.of("Capital City of Nonce"),
                 new Geometry.Point(0, 0),
                 LifecycleState.PLANNED
