@@ -92,8 +92,6 @@ public class CartographyrMod {
         int z = player.getBlockZ();
 
         Set<GeographicEntity> here = Cartography.getEntitiesAt(level, x, z);
-        LOGGER.info("Position check ({}, {}): {} entit(y/ies) here: {}", x, z, here.size(),
-                here.stream().map(e -> e.id() + "/" + e.name().orElse("?")).toList());
         if (!here.isEmpty()) {
             notifyIfChanged(player, here.iterator().next());
             return;
@@ -108,7 +106,6 @@ public class CartographyrMod {
         EntityId lastNotified = lastNotifiedRegion.get(playerId);
         if (entity.id().equals(lastNotified)) {
             pendingRegion.remove(playerId);
-            LOGGER.info("Suppressed repeat notification for {} (already last-notified)", entity.id());
             return;
         }
 
@@ -117,7 +114,6 @@ public class CartographyrMod {
             // First sighting of this candidate -- wait for a second consecutive match before
             // announcing it, rather than firing immediately.
             pendingRegion.put(playerId, entity.id());
-            LOGGER.info("Pending (awaiting confirmation): {}", entity.id());
             return;
         }
 
@@ -126,7 +122,7 @@ public class CartographyrMod {
         lastNotifiedRegion.put(playerId, entity.id());
 
         String name = entity.name().orElse("an unnamed place");
-        LOGGER.info("Sending notification: entered {} ('{}')", entity.id(), name);
+        LOGGER.info("Player {} entered {} ('{}')", player.getName().getString(), entity.id(), name);
         player.sendSystemMessage(Component.literal("You have entered " + name));
     }
 }
