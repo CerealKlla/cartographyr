@@ -34,11 +34,14 @@ public class CartographyrMod {
     public static final String MODID = "cartographyr";
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    // Twice a second; NeoForge has no built-in throttled tick event, so this is a manual modulo
-    // guard inside the every-tick listener. Halved from 20 (once/sec) when the debounce below was
-    // added, so a genuine crossing still confirms in about the same ~1 second as before, despite
-    // now needing two consecutive matching checks.
-    private static final int NOTIFY_CHECK_INTERVAL_TICKS = 10;
+    // Five times a second; NeoForge has no built-in throttled tick event, so this is a manual
+    // modulo guard inside the every-tick listener. The 2-consecutive-checks debounce below means
+    // confirmation takes at least two of these intervals, so this needs to be short enough that
+    // the combined delay still feels immediate -- tuned down from 10 (2/sec, ~1s to confirm) after
+    // that felt slightly laggy in practice; still cheap even at this rate (a plain getEntitiesAt
+    // lookup, or a single getBiome() call for untracked territory -- the expensive flood-fill only
+    // runs once per newly-discovered area, not on every check).
+    private static final int NOTIFY_CHECK_INTERVAL_TICKS = 4;
 
     // Session-only (in-memory, never persisted, resets on rejoin/restart) -- deliberately NOT the
     // real Player Knowledge system (design doc Section 5.9), which is still out of scope. This is
