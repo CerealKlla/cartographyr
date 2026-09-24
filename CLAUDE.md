@@ -36,7 +36,8 @@ Phase 1 minimal milestone (design-document.md Appendix B) — implemented 2026-0
 - Structure Association (Section 5.7) — `associateStructure`/`getAssociatedStructures`/`getEntityForStructure` on `Cartography`, backed by vanilla `GlobalPos` and a `structureIndex` reverse lookup on `CartographySavedData`. Completes the PLANNED→REALIZED flow from Section 4.
 - Characteristics (Section 5.4) — `addCharacteristic`/`removeCharacteristic`/`getCharacteristics` on `Cartography`, backed by a `Set<Characteristic>` field directly on `GeographicEntity` (no index needed). `Characteristic` is `LUMBER, MINING, FARMING` for now.
 - Amenities (Section 5.5) — `addAmenity`/`removeAmenity`/`getAmenities` on `Cartography`, same shape as Characteristics. `Amenity` is `MARKET, MINE, INN, HARBOR` for now.
-- `./gradlew build` and `./gradlew test` both green (10 tests total). Manually smoke-tested via `./gradlew runServer` — boots clean, `CartographyrMod`'s `ServerStartingEvent` listener confirms the wiring works at real server boot.
+- Naming (Section 5.3) — `setName`/`addAlternateName`/`getNames` on `Cartography`. New `AlternateName` (name + free-text metadata) and composite `EntityNames` (current + alternate names) types in `.geo`.
+- `./gradlew build` and `./gradlew test` both green (13 tests total). Manually smoke-tested via `./gradlew runServer` — boots clean, `CartographyrMod`'s `ServerStartingEvent` listener confirms the wiring works at real server boot.
 - See [context/classes/](context/classes/) for per-class reference.
 
-Next: history, naming (Sections 5.6/5.3), or whichever phase the next real feature requires — no obligation to follow the phase list in strict order.
+Next: history (Section 5.6), or whichever phase the next real feature requires — no obligation to follow the phase list in strict order.

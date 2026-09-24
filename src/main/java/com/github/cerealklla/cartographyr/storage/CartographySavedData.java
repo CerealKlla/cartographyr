@@ -11,10 +11,12 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import com.github.cerealklla.cartographyr.CartographyrMod;
+import com.github.cerealklla.cartographyr.geo.AlternateName;
 import com.github.cerealklla.cartographyr.geo.Amenity;
 import com.github.cerealklla.cartographyr.geo.Characteristic;
 import com.github.cerealklla.cartographyr.geo.EntityDefinition;
 import com.github.cerealklla.cartographyr.geo.EntityId;
+import com.github.cerealklla.cartographyr.geo.EntityNames;
 import com.github.cerealklla.cartographyr.geo.GeographicEntity;
 import com.github.cerealklla.cartographyr.geo.LifecycleState;
 
@@ -184,5 +186,21 @@ public final class CartographySavedData extends SavedData {
     public Set<Amenity> getAmenities(EntityId id) {
         GeographicEntity entity = entities.get(id);
         return entity == null ? Set.of() : entity.amenities();
+    }
+
+    /** @apiNote Not the intended integration point — use {@code Cartography.setName} instead. */
+    public Optional<GeographicEntity> setName(EntityId id, String name) {
+        return updateEntity(id, entity -> entity.withName(Optional.of(name)));
+    }
+
+    /** @apiNote Not the intended integration point — use {@code Cartography.addAlternateName} instead. */
+    public Optional<GeographicEntity> addAlternateName(EntityId id, String name, Optional<String> metadata) {
+        return updateEntity(id, entity -> entity.withAddedAlternateName(new AlternateName(name, metadata)));
+    }
+
+    /** @apiNote Not the intended integration point — use {@code Cartography.getNames} instead. */
+    public Optional<EntityNames> getNames(EntityId id) {
+        GeographicEntity entity = entities.get(id);
+        return entity == null ? Optional.empty() : Optional.of(new EntityNames(entity.name(), entity.alternateNames()));
     }
 }

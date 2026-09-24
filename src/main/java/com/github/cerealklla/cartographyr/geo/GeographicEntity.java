@@ -1,5 +1,6 @@
 package com.github.cerealklla.cartographyr.geo;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -31,7 +32,8 @@ public record GeographicEntity(
         LifecycleState lifecycleState,
         Set<GlobalPos> structureReferences,
         Set<Characteristic> characteristics,
-        Set<Amenity> amenities
+        Set<Amenity> amenities,
+        List<AlternateName> alternateNames
 ) {
     public static final Codec<GeographicEntity> CODEC = RecordCodecBuilder.create(i -> i.group(
             EntityId.CODEC.fieldOf("id").forGetter(GeographicEntity::id),
@@ -46,7 +48,8 @@ public record GeographicEntity(
             Codec.list(Characteristic.CODEC).xmap(Set::copyOf, List::copyOf)
                     .fieldOf("characteristics").forGetter(GeographicEntity::characteristics),
             Codec.list(Amenity.CODEC).xmap(Set::copyOf, List::copyOf)
-                    .fieldOf("amenities").forGetter(GeographicEntity::amenities)
+                    .fieldOf("amenities").forGetter(GeographicEntity::amenities),
+            Codec.list(AlternateName.CODEC).fieldOf("alternate_names").forGetter(GeographicEntity::alternateNames)
     ).apply(i, GeographicEntity::new));
 
     public static GeographicEntity create(EntityId id, EntityDefinition definition) {
@@ -60,49 +63,56 @@ public record GeographicEntity(
                 definition.lifecycleState(),
                 Set.of(),
                 Set.of(),
-                Set.of()
+                Set.of(),
+                List.of()
         );
     }
 
     public GeographicEntity withLifecycleState(LifecycleState newState) {
-        return new GeographicEntity(id, dimension, classification, type, name, geometry, newState, structureReferences, characteristics, amenities);
+        return new GeographicEntity(id, dimension, classification, type, name, geometry, newState, structureReferences, characteristics, amenities, alternateNames);
     }
 
     public GeographicEntity withGeometry(Geometry newGeometry) {
-        return new GeographicEntity(id, dimension, classification, type, name, newGeometry, lifecycleState, structureReferences, characteristics, amenities);
+        return new GeographicEntity(id, dimension, classification, type, name, newGeometry, lifecycleState, structureReferences, characteristics, amenities, alternateNames);
     }
 
     public GeographicEntity withName(Optional<String> newName) {
-        return new GeographicEntity(id, dimension, classification, type, newName, geometry, lifecycleState, structureReferences, characteristics, amenities);
+        return new GeographicEntity(id, dimension, classification, type, newName, geometry, lifecycleState, structureReferences, characteristics, amenities, alternateNames);
     }
 
     public GeographicEntity withAddedStructureReference(GlobalPos structureReference) {
         Set<GlobalPos> updated = new HashSet<>(structureReferences);
         updated.add(structureReference);
-        return new GeographicEntity(id, dimension, classification, type, name, geometry, lifecycleState, Set.copyOf(updated), characteristics, amenities);
+        return new GeographicEntity(id, dimension, classification, type, name, geometry, lifecycleState, Set.copyOf(updated), characteristics, amenities, alternateNames);
     }
 
     public GeographicEntity withAddedCharacteristic(Characteristic characteristic) {
         Set<Characteristic> updated = new HashSet<>(characteristics);
         updated.add(characteristic);
-        return new GeographicEntity(id, dimension, classification, type, name, geometry, lifecycleState, structureReferences, Set.copyOf(updated), amenities);
+        return new GeographicEntity(id, dimension, classification, type, name, geometry, lifecycleState, structureReferences, Set.copyOf(updated), amenities, alternateNames);
     }
 
     public GeographicEntity withRemovedCharacteristic(Characteristic characteristic) {
         Set<Characteristic> updated = new HashSet<>(characteristics);
         updated.remove(characteristic);
-        return new GeographicEntity(id, dimension, classification, type, name, geometry, lifecycleState, structureReferences, Set.copyOf(updated), amenities);
+        return new GeographicEntity(id, dimension, classification, type, name, geometry, lifecycleState, structureReferences, Set.copyOf(updated), amenities, alternateNames);
     }
 
     public GeographicEntity withAddedAmenity(Amenity amenity) {
         Set<Amenity> updated = new HashSet<>(amenities);
         updated.add(amenity);
-        return new GeographicEntity(id, dimension, classification, type, name, geometry, lifecycleState, structureReferences, characteristics, Set.copyOf(updated));
+        return new GeographicEntity(id, dimension, classification, type, name, geometry, lifecycleState, structureReferences, characteristics, Set.copyOf(updated), alternateNames);
     }
 
     public GeographicEntity withRemovedAmenity(Amenity amenity) {
         Set<Amenity> updated = new HashSet<>(amenities);
         updated.remove(amenity);
-        return new GeographicEntity(id, dimension, classification, type, name, geometry, lifecycleState, structureReferences, characteristics, Set.copyOf(updated));
+        return new GeographicEntity(id, dimension, classification, type, name, geometry, lifecycleState, structureReferences, characteristics, Set.copyOf(updated), alternateNames);
+    }
+
+    public GeographicEntity withAddedAlternateName(AlternateName alternateName) {
+        List<AlternateName> updated = new ArrayList<>(alternateNames);
+        updated.add(alternateName);
+        return new GeographicEntity(id, dimension, classification, type, name, geometry, lifecycleState, structureReferences, characteristics, amenities, List.copyOf(updated));
     }
 }

@@ -8,6 +8,7 @@ import com.github.cerealklla.cartographyr.geo.Amenity;
 import com.github.cerealklla.cartographyr.geo.Characteristic;
 import com.github.cerealklla.cartographyr.geo.EntityDefinition;
 import com.github.cerealklla.cartographyr.geo.EntityId;
+import com.github.cerealklla.cartographyr.geo.EntityNames;
 import com.github.cerealklla.cartographyr.geo.GeographicEntity;
 import com.github.cerealklla.cartographyr.storage.CartographySavedData;
 
@@ -161,5 +162,34 @@ public final class Cartography {
 
     public static Set<Amenity> getAmenities(ServerLevel level, EntityId id) {
         return getAmenities(level.getServer(), id);
+    }
+
+    /**
+     * Sets an entity's current authoritative name (design doc Section 5.3). Names are descriptive
+     * data, never identity — {@link EntityId} is what other mods should actually reference.
+     */
+    public static Optional<GeographicEntity> setName(MinecraftServer server, EntityId id, String name) {
+        return data(server).setName(id, name);
+    }
+
+    public static Optional<GeographicEntity> setName(ServerLevel level, EntityId id, String name) {
+        return setName(level.getServer(), id, name);
+    }
+
+    /** Adds a historical/alternate name without replacing the current one. */
+    public static Optional<GeographicEntity> addAlternateName(MinecraftServer server, EntityId id, String name, Optional<String> metadata) {
+        return data(server).addAlternateName(id, name, metadata);
+    }
+
+    public static Optional<GeographicEntity> addAlternateName(ServerLevel level, EntityId id, String name, Optional<String> metadata) {
+        return addAlternateName(level.getServer(), id, name, metadata);
+    }
+
+    public static Optional<EntityNames> getNames(MinecraftServer server, EntityId id) {
+        return data(server).getNames(id);
+    }
+
+    public static Optional<EntityNames> getNames(ServerLevel level, EntityId id) {
+        return getNames(level.getServer(), id);
     }
 }

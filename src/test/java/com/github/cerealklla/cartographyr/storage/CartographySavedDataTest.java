@@ -3,6 +3,7 @@ package com.github.cerealklla.cartographyr.storage;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -10,11 +11,13 @@ import org.junit.jupiter.api.Test;
 
 import com.mojang.serialization.DataResult;
 
+import com.github.cerealklla.cartographyr.geo.AlternateName;
 import com.github.cerealklla.cartographyr.geo.Amenity;
 import com.github.cerealklla.cartographyr.geo.Characteristic;
 import com.github.cerealklla.cartographyr.geo.Classification;
 import com.github.cerealklla.cartographyr.geo.EntityDefinition;
 import com.github.cerealklla.cartographyr.geo.EntityId;
+import com.github.cerealklla.cartographyr.geo.EntityNames;
 import com.github.cerealklla.cartographyr.geo.EntityType;
 import com.github.cerealklla.cartographyr.geo.Geometry;
 import com.github.cerealklla.cartographyr.geo.GeographicEntity;
@@ -161,6 +164,47 @@ class CartographySavedDataTest {
 
         CartographySavedData reloaded = simulateReload(data);
         assertEquals(Set.of(Amenity.MARKET), reloaded.getAmenities(created.id()));
+    }
+
+    @Test
+    void namingSupportsSetAndAlternatesAndSurvivesReload() {
+        CartographySavedData data = new CartographySavedData();
+
+        GeographicEntity created = data.createEntity(new EntityDefinition(
+                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT,
+                Optional.empty(), new Geometry.Point(0, 0), LifecycleState.REALIZED
+        ));
+
+        Optional<EntityNames> beforeNaming = data.getNames(created.id());
+        assertTrue(beforeNaming.isPresent());
+        assertEquals(Optional.empty(), beforeNaming.get().currentName());
+        assertEquals(List.of(), beforeNaming.get().alternateNames());
+
+        data.setName(created.id(), "Nonceville");
+        data.addAlternateName(created.id(), "Old Nonceville", Optional.of("pre-renaming name, per town records"));
+        data.addAlternateName(created.id(), "The Lumber Camp", Optional.empty());
+
+        Optional<EntityNames> afterNaming = data.getNames(created.id());
+        assertTrue(afterNaming.isPresent());
+        assertEquals(Optional.of("Nonceville"), afterNaming.get().currentName());
+        assertEquals(
+                List.of(
+                        new AlternateName("Old Nonceville", Optional.of("pre-renaming name, per town records")),
+                        new AlternateName("The Lumber Camp", Optional.empty())
+                ),
+                afterNaming.get().alternateNames()
+        );
+
+        CartographySavedData reloaded = simulateReload(data);
+        Optional<EntityNames> reloadedNames = reloaded.getNames(created.id());
+        assertTrue(reloadedNames.isPresent());
+        assertEquals(afterNaming.get(), reloadedNames.get());
+    }
+
+    @Test
+    void getNamesReturnsEmptyForUnknownEntity() {
+        CartographySavedData data = new CartographySavedData();
+        assertEquals(Optional.empty(), data.getNames(new EntityId(999L)));
     }
 
     // Goes through CartographySavedData.TYPE's own codec factory, not a private test-only codec,

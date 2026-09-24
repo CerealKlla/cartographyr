@@ -2,6 +2,7 @@ package com.github.cerealklla.cartographyr.geo;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -29,7 +30,8 @@ class GeographicEntityCodecTest {
                 LifecycleState.PLANNED,
                 Set.of(),
                 Set.of(),
-                Set.of()
+                Set.of(),
+                List.of()
         );
 
         GeographicEntity decoded = roundTrip(original);
@@ -50,7 +52,8 @@ class GeographicEntityCodecTest {
                 LifecycleState.REALIZED,
                 Set.of(),
                 Set.of(),
-                Set.of()
+                Set.of(),
+                List.of()
         );
 
         GeographicEntity decoded = roundTrip(original);
@@ -70,7 +73,8 @@ class GeographicEntityCodecTest {
                 LifecycleState.REALIZED,
                 Set.of(GlobalPos.of(Level.OVERWORLD, new BlockPos(0, 64, 0))),
                 Set.of(),
-                Set.of()
+                Set.of(),
+                List.of()
         );
 
         GeographicEntity decoded = roundTrip(original);
@@ -91,7 +95,8 @@ class GeographicEntityCodecTest {
                 LifecycleState.REALIZED,
                 Set.of(),
                 Set.of(Characteristic.LUMBER, Characteristic.FARMING),
-                Set.of()
+                Set.of(),
+                List.of()
         );
 
         GeographicEntity decoded = roundTrip(original);
@@ -112,13 +117,39 @@ class GeographicEntityCodecTest {
                 LifecycleState.REALIZED,
                 Set.of(),
                 Set.of(),
-                Set.of(Amenity.MARKET, Amenity.INN)
+                Set.of(Amenity.MARKET, Amenity.INN),
+                List.of()
         );
 
         GeographicEntity decoded = roundTrip(original);
 
         assertEquals(original, decoded);
         assertEquals(original.amenities(), decoded.amenities());
+    }
+
+    @Test
+    void roundTripsAlternateNames() {
+        GeographicEntity original = new GeographicEntity(
+                new EntityId(8L),
+                Level.OVERWORLD,
+                Classification.CONSTRUCTED,
+                EntityType.SETTLEMENT,
+                Optional.of("Nonceville"),
+                new Geometry.Point(0, 0),
+                LifecycleState.REALIZED,
+                Set.of(),
+                Set.of(),
+                Set.of(),
+                List.of(
+                        new AlternateName("Old Nonceville", Optional.of("pre-renaming name, per town records")),
+                        new AlternateName("The Lumber Camp", Optional.empty())
+                )
+        );
+
+        GeographicEntity decoded = roundTrip(original);
+
+        assertEquals(original, decoded);
+        assertEquals(original.alternateNames(), decoded.alternateNames());
     }
 
     private static GeographicEntity roundTrip(GeographicEntity entity) {
