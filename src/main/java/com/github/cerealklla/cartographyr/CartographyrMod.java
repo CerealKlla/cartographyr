@@ -34,9 +34,11 @@ public class CartographyrMod {
     public static final String MODID = "cartographyr";
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    // Once per second is plenty for a position check; NeoForge has no built-in throttled tick
-    // event, so this is a manual modulo guard inside the every-tick listener.
-    private static final int NOTIFY_CHECK_INTERVAL_TICKS = 20;
+    // Twice a second; NeoForge has no built-in throttled tick event, so this is a manual modulo
+    // guard inside the every-tick listener. Halved from 20 (once/sec) when the debounce below was
+    // added, so a genuine crossing still confirms in about the same ~1 second as before, despite
+    // now needing two consecutive matching checks.
+    private static final int NOTIFY_CHECK_INTERVAL_TICKS = 10;
 
     // Session-only (in-memory, never persisted, resets on rejoin/restart) -- deliberately NOT the
     // real Player Knowledge system (design doc Section 5.9), which is still out of scope. This is
@@ -44,6 +46,12 @@ public class CartographyrMod {
     // likely belong in a different mod in the suite, consuming Cartography's public API the same
     // way this does.
     private final Map<UUID, EntityId> lastNotifiedRegion = new HashMap<>();
+
+    // Debounce: a candidate must be seen on two consecutive checks before it's announced, so
+    // briefly clipping a jagged real-world biome border (e.g. desert/badlands, which vanilla
+    // generates with sharp, non-smooth edges) doesn't repeatedly re-fire the notification as the
+    // player oscillates across it. Confirmed necessary via a real playtest -- see decisions.md.
+    private final Map<UUID, EntityId> pendingRegion = new HashMap<>();
 
     public CartographyrMod(IEventBus modEventBus, ModContainer modContainer) {
         modEventBus.addListener(this::commonSetup);
@@ -93,12 +101,26 @@ public class CartographyrMod {
     }
 
     private void notifyIfChanged(ServerPlayer player, GeographicEntity entity) {
-        EntityId lastNotified = lastNotifiedRegion.get(player.getUUID());
+        UUID playerId = player.getUUID();
+        EntityId lastNotified = lastNotifiedRegion.get(playerId);
         if (entity.id().equals(lastNotified)) {
+            pendingRegion.remove(playerId);
             LOGGER.info("Suppressed repeat notification for {} (already last-notified)", entity.id());
             return;
         }
-        lastNotifiedRegion.put(player.getUUID(), entity.id());
+
+        EntityId pending = pendingRegion.get(playerId);
+        if (!entity.id().equals(pending)) {
+            // First sighting of this candidate -- wait for a second consecutive match before
+            // announcing it, rather than firing immediately.
+            pendingRegion.put(playerId, entity.id());
+            LOGGER.info("Pending (awaiting confirmation): {}", entity.id());
+            return;
+        }
+
+        // Confirmed: this candidate was also seen on the previous check.
+        pendingRegion.remove(playerId);
+        lastNotifiedRegion.put(playerId, entity.id());
 
         String name = entity.name().orElse("an unnamed place");
         LOGGER.info("Sending notification: entered {} ('{}')", entity.id(), name);
