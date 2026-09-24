@@ -14,8 +14,10 @@ import com.github.cerealklla.cartographyr.geo.EntityType;
 import com.github.cerealklla.cartographyr.geo.GeographicEntity;
 import com.github.cerealklla.cartographyr.geo.Geometry;
 import com.github.cerealklla.cartographyr.geo.HistoricalFact;
+import com.github.cerealklla.cartographyr.natural.NaturalRegionDiscovery;
 import com.github.cerealklla.cartographyr.storage.CartographySavedData;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -242,5 +244,24 @@ public final class Cartography {
 
     public static Optional<Geometry> getRegionBounds(ServerLevel level, EntityId id) {
         return getRegionBounds(level.getServer(), id);
+    }
+
+    /**
+     * Attempts to discover a new natural region at {@code pos} (design doc Section 5.8), sampling
+     * live biome data — unlike {@link #getNaturalRegionAt}, this can create a new entity as a side
+     * effect. Callers should check {@link #getEntitiesAt} first and only call this when nothing is
+     * already there; this doesn't check for existing entities itself, matching {@code
+     * NaturalRegionDiscovery.discover}'s own contract.
+     *
+     * <p>No {@code MinecraftServer} overload: unlike everything else here, discovery samples biome
+     * data at a specific Y as well as X/Z (caves can differ from the surface), so a bare
+     * dimension+x+z signature would need a fabricated Y. Callers already have a {@link ServerLevel}
+     * and {@link BlockPos} on hand in every real use case (e.g. a player's current position).
+     *
+     * @apiNote Needs a live level to sample biomes, so (unlike everything else in this facade) this
+     * can't be unit tested — see {@code NaturalRegionDiscovery}'s own notes.
+     */
+    public static Optional<GeographicEntity> discoverNaturalRegion(ServerLevel level, BlockPos pos) {
+        return NaturalRegionDiscovery.discover(level, pos);
     }
 }
