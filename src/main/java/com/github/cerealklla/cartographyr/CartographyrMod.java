@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 
 import com.github.cerealklla.cartographyr.api.Cartography;
+import com.github.cerealklla.cartographyr.settlement.SettlementListener;
 
 import net.minecraft.world.level.Level;
 import net.neoforged.bus.api.IEventBus;
@@ -28,6 +29,11 @@ public class CartographyrMod {
         // CartographySavedData.TYPE's registration at real server boot, proving the wiring
         // doesn't crash outside of unit tests.
         NeoForge.EVENT_BUS.register(this);
+
+        // Villages are world-gen-driven, not player-driven, so Cartographyr detects them itself
+        // rather than waiting for an external caller (see settlement package + decisions.md,
+        // 2026-09-24).
+        NeoForge.EVENT_BUS.addListener(SettlementListener::onChunkLoad);
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {
