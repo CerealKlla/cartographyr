@@ -21,6 +21,7 @@ import com.github.cerealklla.cartographyr.geo.EntityNames;
 import com.github.cerealklla.cartographyr.geo.EntityType;
 import com.github.cerealklla.cartographyr.geo.Geometry;
 import com.github.cerealklla.cartographyr.geo.GeographicEntity;
+import com.github.cerealklla.cartographyr.geo.HistoricalFact;
 import com.github.cerealklla.cartographyr.geo.LifecycleState;
 
 import net.minecraft.core.BlockPos;
@@ -205,6 +206,37 @@ class CartographySavedDataTest {
     void getNamesReturnsEmptyForUnknownEntity() {
         CartographySavedData data = new CartographySavedData();
         assertEquals(Optional.empty(), data.getNames(new EntityId(999L)));
+    }
+
+    @Test
+    void historicalFactsStaySortedByGameTimeEvenWhenAddedOutOfOrder() {
+        CartographySavedData data = new CartographySavedData();
+
+        GeographicEntity created = data.createEntity(new EntityDefinition(
+                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT,
+                Optional.of("Nonceville"), new Geometry.Point(0, 0), LifecycleState.REALIZED
+        ));
+
+        assertEquals(List.of(), data.getHistoricalFacts(created.id()));
+
+        // Deliberately added out of chronological order, e.g. an old newspaper found later
+        // revealing an earlier event (design doc Section 11.2) -- should still read back sorted.
+        data.addHistoricalFact(created.id(), new HistoricalFact("Lumber mill built", 24000L, Optional.empty()));
+        data.addHistoricalFact(created.id(), new HistoricalFact("Founded by wandering traders", 0L, Optional.of("town records")));
+        data.addHistoricalFact(created.id(), new HistoricalFact("Market established", 12000L, Optional.empty()));
+
+        List<HistoricalFact> facts = data.getHistoricalFacts(created.id());
+        assertEquals(
+                List.of(
+                        new HistoricalFact("Founded by wandering traders", 0L, Optional.of("town records")),
+                        new HistoricalFact("Market established", 12000L, Optional.empty()),
+                        new HistoricalFact("Lumber mill built", 24000L, Optional.empty())
+                ),
+                facts
+        );
+
+        CartographySavedData reloaded = simulateReload(data);
+        assertEquals(facts, reloaded.getHistoricalFacts(created.id()));
     }
 
     // Goes through CartographySavedData.TYPE's own codec factory, not a private test-only codec,

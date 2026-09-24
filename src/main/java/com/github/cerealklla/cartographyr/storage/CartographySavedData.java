@@ -2,6 +2,7 @@ package com.github.cerealklla.cartographyr.storage;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -18,6 +19,7 @@ import com.github.cerealklla.cartographyr.geo.EntityDefinition;
 import com.github.cerealklla.cartographyr.geo.EntityId;
 import com.github.cerealklla.cartographyr.geo.EntityNames;
 import com.github.cerealklla.cartographyr.geo.GeographicEntity;
+import com.github.cerealklla.cartographyr.geo.HistoricalFact;
 import com.github.cerealklla.cartographyr.geo.LifecycleState;
 
 import net.minecraft.core.GlobalPos;
@@ -202,5 +204,16 @@ public final class CartographySavedData extends SavedData {
     public Optional<EntityNames> getNames(EntityId id) {
         GeographicEntity entity = entities.get(id);
         return entity == null ? Optional.empty() : Optional.of(new EntityNames(entity.name(), entity.alternateNames()));
+    }
+
+    /** @apiNote Not the intended integration point — use {@code Cartography.addHistoricalFact} instead. */
+    public Optional<GeographicEntity> addHistoricalFact(EntityId id, HistoricalFact fact) {
+        return updateEntity(id, entity -> entity.withAddedHistoricalFact(fact));
+    }
+
+    /** @apiNote Not the intended integration point — use {@code Cartography.getHistoricalFacts} instead. */
+    public List<HistoricalFact> getHistoricalFacts(EntityId id) {
+        GeographicEntity entity = entities.get(id);
+        return entity == null ? List.of() : entity.historicalFacts();
     }
 }

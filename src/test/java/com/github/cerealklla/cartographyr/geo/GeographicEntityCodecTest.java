@@ -31,6 +31,7 @@ class GeographicEntityCodecTest {
                 Set.of(),
                 Set.of(),
                 Set.of(),
+                List.of(),
                 List.of()
         );
 
@@ -53,6 +54,7 @@ class GeographicEntityCodecTest {
                 Set.of(),
                 Set.of(),
                 Set.of(),
+                List.of(),
                 List.of()
         );
 
@@ -74,6 +76,7 @@ class GeographicEntityCodecTest {
                 Set.of(GlobalPos.of(Level.OVERWORLD, new BlockPos(0, 64, 0))),
                 Set.of(),
                 Set.of(),
+                List.of(),
                 List.of()
         );
 
@@ -96,6 +99,7 @@ class GeographicEntityCodecTest {
                 Set.of(),
                 Set.of(Characteristic.LUMBER, Characteristic.FARMING),
                 Set.of(),
+                List.of(),
                 List.of()
         );
 
@@ -118,6 +122,7 @@ class GeographicEntityCodecTest {
                 Set.of(),
                 Set.of(),
                 Set.of(Amenity.MARKET, Amenity.INN),
+                List.of(),
                 List.of()
         );
 
@@ -143,13 +148,40 @@ class GeographicEntityCodecTest {
                 List.of(
                         new AlternateName("Old Nonceville", Optional.of("pre-renaming name, per town records")),
                         new AlternateName("The Lumber Camp", Optional.empty())
-                )
+                ),
+                List.of()
         );
 
         GeographicEntity decoded = roundTrip(original);
 
         assertEquals(original, decoded);
         assertEquals(original.alternateNames(), decoded.alternateNames());
+    }
+
+    @Test
+    void roundTripsHistoricalFacts() {
+        GeographicEntity original = new GeographicEntity(
+                new EntityId(9L),
+                Level.OVERWORLD,
+                Classification.CONSTRUCTED,
+                EntityType.SETTLEMENT,
+                Optional.of("Nonceville"),
+                new Geometry.Point(0, 0),
+                LifecycleState.REALIZED,
+                Set.of(),
+                Set.of(),
+                Set.of(),
+                List.of(),
+                List.of(
+                        new HistoricalFact("Founded by wandering traders", 0L, Optional.of("town records")),
+                        new HistoricalFact("Lumber mill built", 24000L, Optional.empty())
+                )
+        );
+
+        GeographicEntity decoded = roundTrip(original);
+
+        assertEquals(original, decoded);
+        assertEquals(original.historicalFacts(), decoded.historicalFacts());
     }
 
     private static GeographicEntity roundTrip(GeographicEntity entity) {

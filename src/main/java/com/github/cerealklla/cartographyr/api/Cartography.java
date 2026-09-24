@@ -1,5 +1,6 @@
 package com.github.cerealklla.cartographyr.api;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.UnaryOperator;
@@ -10,6 +11,7 @@ import com.github.cerealklla.cartographyr.geo.EntityDefinition;
 import com.github.cerealklla.cartographyr.geo.EntityId;
 import com.github.cerealklla.cartographyr.geo.EntityNames;
 import com.github.cerealklla.cartographyr.geo.GeographicEntity;
+import com.github.cerealklla.cartographyr.geo.HistoricalFact;
 import com.github.cerealklla.cartographyr.storage.CartographySavedData;
 
 import net.minecraft.core.GlobalPos;
@@ -191,5 +193,27 @@ public final class Cartography {
 
     public static Optional<EntityNames> getNames(ServerLevel level, EntityId id) {
         return getNames(level.getServer(), id);
+    }
+
+    /**
+     * Records a descriptive historical fact on an entity (design doc Section 5.6). Cartography
+     * records these; it does not simulate or generate history itself. The entity's fact list
+     * stays sorted by {@link HistoricalFact#gameTime()}, so facts discovered out of order still
+     * read back chronologically.
+     */
+    public static Optional<GeographicEntity> addHistoricalFact(MinecraftServer server, EntityId id, HistoricalFact fact) {
+        return data(server).addHistoricalFact(id, fact);
+    }
+
+    public static Optional<GeographicEntity> addHistoricalFact(ServerLevel level, EntityId id, HistoricalFact fact) {
+        return addHistoricalFact(level.getServer(), id, fact);
+    }
+
+    public static List<HistoricalFact> getHistoricalFacts(MinecraftServer server, EntityId id) {
+        return data(server).getHistoricalFacts(id);
+    }
+
+    public static List<HistoricalFact> getHistoricalFacts(ServerLevel level, EntityId id) {
+        return getHistoricalFacts(level.getServer(), id);
     }
 }

@@ -37,7 +37,9 @@ Phase 1 minimal milestone (design-document.md Appendix B) — implemented 2026-0
 - Characteristics (Section 5.4) — `addCharacteristic`/`removeCharacteristic`/`getCharacteristics` on `Cartography`, backed by a `Set<Characteristic>` field directly on `GeographicEntity` (no index needed). `Characteristic` is `LUMBER, MINING, FARMING` for now.
 - Amenities (Section 5.5) — `addAmenity`/`removeAmenity`/`getAmenities` on `Cartography`, same shape as Characteristics. `Amenity` is `MARKET, MINE, INN, HARBOR` for now.
 - Naming (Section 5.3) — `setName`/`addAlternateName`/`getNames` on `Cartography`. New `AlternateName` (name + free-text metadata) and composite `EntityNames` (current + alternate names) types in `.geo`.
-- `./gradlew build` and `./gradlew test` both green (13 tests total). Manually smoke-tested via `./gradlew runServer` — boots clean, `CartographyrMod`'s `ServerStartingEvent` listener confirms the wiring works at real server boot.
+- History (Section 5.6) — `addHistoricalFact`/`getHistoricalFacts` on `Cartography`. New `HistoricalFact` (description + `gameTime` + free-text metadata) type; the entity's fact list stays sorted by `gameTime` regardless of insertion order.
+- **Section 5's core entity-data endpoints (5.1–5.7) are now complete.** Remaining design doc sections (5.8 Natural Geography, 5.9 Player Knowledge) are explicitly out of scope per Appendix B until there's a real reason to need them.
+- `./gradlew build` and `./gradlew test` both green (15 tests total). Manually smoke-tested via `./gradlew runServer` — boots clean, `CartographyrMod`'s `ServerStartingEvent` listener confirms the wiring works at real server boot.
 - See [context/classes/](context/classes/) for per-class reference.
 
-Next: history (Section 5.6), or whichever phase the next real feature requires — no obligation to follow the phase list in strict order.
+Next: no obvious next slice within the current scope — likely either start on a second mod in the suite that actually consumes this API, or revisit one of the deferred items (EntityType extensibility, spatial index persistence, an `-api` Gradle module split) when something concrete needs it.
