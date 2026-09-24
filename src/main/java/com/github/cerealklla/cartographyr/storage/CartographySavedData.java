@@ -15,10 +15,13 @@ import com.github.cerealklla.cartographyr.CartographyrMod;
 import com.github.cerealklla.cartographyr.geo.AlternateName;
 import com.github.cerealklla.cartographyr.geo.Amenity;
 import com.github.cerealklla.cartographyr.geo.Characteristic;
+import com.github.cerealklla.cartographyr.geo.Classification;
 import com.github.cerealklla.cartographyr.geo.EntityDefinition;
 import com.github.cerealklla.cartographyr.geo.EntityId;
 import com.github.cerealklla.cartographyr.geo.EntityNames;
+import com.github.cerealklla.cartographyr.geo.EntityType;
 import com.github.cerealklla.cartographyr.geo.GeographicEntity;
+import com.github.cerealklla.cartographyr.geo.Geometry;
 import com.github.cerealklla.cartographyr.geo.HistoricalFact;
 import com.github.cerealklla.cartographyr.geo.LifecycleState;
 
@@ -215,5 +218,39 @@ public final class CartographySavedData extends SavedData {
     public List<HistoricalFact> getHistoricalFacts(EntityId id) {
         GeographicEntity entity = entities.get(id);
         return entity == null ? List.of() : entity.historicalFacts();
+    }
+
+    /** @apiNote Not the intended integration point — use {@code Cartography.getNaturalRegionAt} instead. */
+    public Optional<GeographicEntity> getNaturalRegionAt(ResourceKey<Level> dimension, int x, int z) {
+        return getEntitiesAt(dimension, x, z).stream()
+                .filter(entity -> entity.classification() == Classification.NATURAL)
+                .findFirst();
+    }
+
+    /**
+     * @apiNote Not the intended integration point — use {@code Cartography.findNaturalRegions} instead.
+     * Simplified from the design doc's broader "search criteria such as type, name, area, dimension,
+     * or bounds" down to just dimension + type — the two concretely useful ones for now. O(n) scan
+     * over all entities, no dedicated index, same as the characteristics/amenities getters.
+     */
+    public Set<GeographicEntity> findNaturalRegions(ResourceKey<Level> dimension, EntityType type) {
+        Set<GeographicEntity> result = new HashSet<>();
+        for (GeographicEntity entity : entities.values()) {
+            if (entity.classification() == Classification.NATURAL
+                    && entity.dimension().equals(dimension)
+                    && entity.type() == type) {
+                result.add(entity);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * @apiNote Not the intended integration point — use {@code Cartography.getRegionBounds} instead.
+     * Generic over any entity, not just natural ones — the underlying operation doesn't need the
+     * restriction the design doc's wording implies.
+     */
+    public Optional<Geometry> getRegionBounds(EntityId id) {
+        return getEntity(id).map(GeographicEntity::geometry);
     }
 }

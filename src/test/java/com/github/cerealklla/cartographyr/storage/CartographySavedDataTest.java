@@ -28,6 +28,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 
 /**
@@ -237,6 +238,45 @@ class CartographySavedDataTest {
 
         CartographySavedData reloaded = simulateReload(data);
         assertEquals(facts, reloaded.getHistoricalFacts(created.id()));
+    }
+
+    @Test
+    void naturalRegionQueriesFindDiscoveredRegions() {
+        // Manually constructed, standing in for NaturalRegionDiscovery's output -- the flood-fill
+        // algorithm itself needs a live ServerLevel to sample biome data and can't be unit tested
+        // (see context/decisions.md). These query methods are what it's built on, so they're
+        // tested directly against a hand-built Region entity instead.
+        CartographySavedData data = new CartographySavedData();
+
+        Geometry.Region desertShape = new Geometry.Region(Set.of(ChunkPos.pack(0, 0), ChunkPos.pack(1, 0)));
+        GeographicEntity desert = data.createEntity(new EntityDefinition(
+                Level.OVERWORLD, Classification.NATURAL, EntityType.DESERT,
+                Optional.of("The Forsaken Sands"), desertShape, LifecycleState.REALIZED
+        ));
+
+        GeographicEntity settlement = data.createEntity(new EntityDefinition(
+                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT,
+                Optional.of("Nonceville"), new Geometry.Point(500, 500), LifecycleState.REALIZED
+        ));
+
+        // A point inside the desert's first cell (chunk 0,0 covers blocks 0..15)
+        Optional<GeographicEntity> foundAt = data.getNaturalRegionAt(Level.OVERWORLD, 5, 5);
+        assertTrue(foundAt.isPresent());
+        assertEquals(desert.id(), foundAt.get().id());
+
+        // The settlement is CONSTRUCTED, not NATURAL, so it must never show up here even though
+        // getEntitiesAt would find it at its own point.
+        assertEquals(Optional.empty(), data.getNaturalRegionAt(Level.OVERWORLD, 500, 500));
+
+        Set<GeographicEntity> deserts = data.findNaturalRegions(Level.OVERWORLD, EntityType.DESERT);
+        assertEquals(Set.of(desert), deserts);
+        assertEquals(Set.of(), data.findNaturalRegions(Level.OVERWORLD, EntityType.FOREST));
+
+        assertEquals(Optional.of(desertShape), data.getRegionBounds(desert.id()));
+        assertEquals(Optional.empty(), data.getRegionBounds(new EntityId(999L)));
+
+        // Not classification-restricted -- works for the constructed entity too.
+        assertTrue(data.getRegionBounds(settlement.id()).isPresent());
     }
 
     // Goes through CartographySavedData.TYPE's own codec factory, not a private test-only codec,

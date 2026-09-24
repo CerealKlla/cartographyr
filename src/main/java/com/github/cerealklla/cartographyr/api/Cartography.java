@@ -10,7 +10,9 @@ import com.github.cerealklla.cartographyr.geo.Characteristic;
 import com.github.cerealklla.cartographyr.geo.EntityDefinition;
 import com.github.cerealklla.cartographyr.geo.EntityId;
 import com.github.cerealklla.cartographyr.geo.EntityNames;
+import com.github.cerealklla.cartographyr.geo.EntityType;
 import com.github.cerealklla.cartographyr.geo.GeographicEntity;
+import com.github.cerealklla.cartographyr.geo.Geometry;
 import com.github.cerealklla.cartographyr.geo.HistoricalFact;
 import com.github.cerealklla.cartographyr.storage.CartographySavedData;
 
@@ -215,5 +217,30 @@ public final class Cartography {
 
     public static List<HistoricalFact> getHistoricalFacts(ServerLevel level, EntityId id) {
         return getHistoricalFacts(level.getServer(), id);
+    }
+
+    /** The natural (non-constructed) entity at a point, if one's been discovered there (design doc Section 5.8). */
+    public static Optional<GeographicEntity> getNaturalRegionAt(MinecraftServer server, ResourceKey<Level> dimension, int x, int z) {
+        return data(server).getNaturalRegionAt(dimension, x, z);
+    }
+
+    public static Optional<GeographicEntity> getNaturalRegionAt(ServerLevel level, int x, int z) {
+        return getNaturalRegionAt(level.getServer(), level.dimension(), x, z);
+    }
+
+    public static Set<GeographicEntity> findNaturalRegions(MinecraftServer server, ResourceKey<Level> dimension, EntityType type) {
+        return data(server).findNaturalRegions(dimension, type);
+    }
+
+    public static Set<GeographicEntity> findNaturalRegions(ServerLevel level, EntityType type) {
+        return findNaturalRegions(level.getServer(), level.dimension(), type);
+    }
+
+    public static Optional<Geometry> getRegionBounds(MinecraftServer server, EntityId id) {
+        return data(server).getRegionBounds(id);
+    }
+
+    public static Optional<Geometry> getRegionBounds(ServerLevel level, EntityId id) {
+        return getRegionBounds(level.getServer(), id);
     }
 }

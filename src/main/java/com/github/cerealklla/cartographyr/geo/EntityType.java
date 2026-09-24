@@ -14,11 +14,18 @@ import com.mojang.serialization.Codec;
  * characteristics/amenities/extension data. No RUIN either — a ruined settlement is just a
  * SETTLEMENT with {@link LifecycleState#ABANDONED} or {@link LifecycleState#DESTROYED}, not a
  * different type.
+ *
+ * <p>DESERT/FOREST (added for Natural Geography, Section 5.8) are a different case from the
+ * VILLAGE/TOWN/CITY removal above: they're intrinsic, physically-observable terrain properties
+ * (biome-driven, stable over time), not a socially-constructed tier — structurally the same kind
+ * of value as MOUNTAIN/RIVER, which were never in question.
  */
 public enum EntityType {
     REGION,
     MOUNTAIN,
     RIVER,
+    DESERT,
+    FOREST,
     SETTLEMENT,
     MINE,
     ROAD;
