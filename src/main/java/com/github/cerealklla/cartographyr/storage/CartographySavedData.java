@@ -11,6 +11,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import com.github.cerealklla.cartographyr.CartographyrMod;
+import com.github.cerealklla.cartographyr.geo.Amenity;
 import com.github.cerealklla.cartographyr.geo.Characteristic;
 import com.github.cerealklla.cartographyr.geo.EntityDefinition;
 import com.github.cerealklla.cartographyr.geo.EntityId;
@@ -167,5 +168,21 @@ public final class CartographySavedData extends SavedData {
     public Set<Characteristic> getCharacteristics(EntityId id) {
         GeographicEntity entity = entities.get(id);
         return entity == null ? Set.of() : entity.characteristics();
+    }
+
+    /** @apiNote Not the intended integration point — use {@code Cartography.addAmenity} instead. */
+    public Optional<GeographicEntity> addAmenity(EntityId id, Amenity amenity) {
+        return updateEntity(id, entity -> entity.withAddedAmenity(amenity));
+    }
+
+    /** @apiNote Not the intended integration point — use {@code Cartography.removeAmenity} instead. */
+    public Optional<GeographicEntity> removeAmenity(EntityId id, Amenity amenity) {
+        return updateEntity(id, entity -> entity.withRemovedAmenity(amenity));
+    }
+
+    /** @apiNote Not the intended integration point — use {@code Cartography.getAmenities} instead. */
+    public Set<Amenity> getAmenities(EntityId id) {
+        GeographicEntity entity = entities.get(id);
+        return entity == null ? Set.of() : entity.amenities();
     }
 }

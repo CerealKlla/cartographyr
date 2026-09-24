@@ -4,6 +4,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.UnaryOperator;
 
+import com.github.cerealklla.cartographyr.geo.Amenity;
 import com.github.cerealklla.cartographyr.geo.Characteristic;
 import com.github.cerealklla.cartographyr.geo.EntityDefinition;
 import com.github.cerealklla.cartographyr.geo.EntityId;
@@ -131,5 +132,34 @@ public final class Cartography {
 
     public static Set<Characteristic> getCharacteristics(ServerLevel level, EntityId id) {
         return getCharacteristics(level.getServer(), id);
+    }
+
+    /**
+     * Records a physical/infrastructural feature on an entity (design doc Section 5.5), e.g. a
+     * market or a sawmill. World Builder can use amenities as generation inputs; Cartography just
+     * records their geographic existence.
+     */
+    public static Optional<GeographicEntity> addAmenity(MinecraftServer server, EntityId id, Amenity amenity) {
+        return data(server).addAmenity(id, amenity);
+    }
+
+    public static Optional<GeographicEntity> addAmenity(ServerLevel level, EntityId id, Amenity amenity) {
+        return addAmenity(level.getServer(), id, amenity);
+    }
+
+    public static Optional<GeographicEntity> removeAmenity(MinecraftServer server, EntityId id, Amenity amenity) {
+        return data(server).removeAmenity(id, amenity);
+    }
+
+    public static Optional<GeographicEntity> removeAmenity(ServerLevel level, EntityId id, Amenity amenity) {
+        return removeAmenity(level.getServer(), id, amenity);
+    }
+
+    public static Set<Amenity> getAmenities(MinecraftServer server, EntityId id) {
+        return data(server).getAmenities(id);
+    }
+
+    public static Set<Amenity> getAmenities(ServerLevel level, EntityId id) {
+        return getAmenities(level.getServer(), id);
     }
 }

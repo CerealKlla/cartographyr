@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import com.mojang.serialization.DataResult;
 
+import com.github.cerealklla.cartographyr.geo.Amenity;
 import com.github.cerealklla.cartographyr.geo.Characteristic;
 import com.github.cerealklla.cartographyr.geo.Classification;
 import com.github.cerealklla.cartographyr.geo.EntityDefinition;
@@ -135,6 +136,31 @@ class CartographySavedDataTest {
 
         CartographySavedData reloaded = simulateReload(data);
         assertEquals(Set.of(Characteristic.LUMBER), reloaded.getCharacteristics(created.id()));
+    }
+
+    @Test
+    void amenitiesCanBeAddedRemovedAndSurviveReload() {
+        CartographySavedData data = new CartographySavedData();
+
+        GeographicEntity created = data.createEntity(new EntityDefinition(
+                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT,
+                Optional.of("Nonceville"), new Geometry.Point(0, 0), LifecycleState.REALIZED
+        ));
+
+        assertEquals(Set.of(), data.getAmenities(created.id()));
+
+        Optional<GeographicEntity> afterAdd = data.addAmenity(created.id(), Amenity.MARKET);
+        assertTrue(afterAdd.isPresent());
+        assertEquals(Set.of(Amenity.MARKET), data.getAmenities(created.id()));
+
+        data.addAmenity(created.id(), Amenity.INN);
+        assertEquals(Set.of(Amenity.MARKET, Amenity.INN), data.getAmenities(created.id()));
+
+        data.removeAmenity(created.id(), Amenity.INN);
+        assertEquals(Set.of(Amenity.MARKET), data.getAmenities(created.id()));
+
+        CartographySavedData reloaded = simulateReload(data);
+        assertEquals(Set.of(Amenity.MARKET), reloaded.getAmenities(created.id()));
     }
 
     // Goes through CartographySavedData.TYPE's own codec factory, not a private test-only codec,

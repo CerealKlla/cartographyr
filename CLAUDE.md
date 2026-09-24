@@ -35,7 +35,8 @@ Phase 1 minimal milestone (design-document.md Appendix B) — implemented 2026-0
 - `EntityType` simplified since: dropped VILLAGE/TOWN/CITY tier and RUIN, collapsed to `REGION, MOUNTAIN, RIVER, SETTLEMENT, MINE, ROAD` — settlement tier isn't Cartography's to classify, and active-vs-abandoned is `LifecycleState`'s job, not a type.
 - Structure Association (Section 5.7) — `associateStructure`/`getAssociatedStructures`/`getEntityForStructure` on `Cartography`, backed by vanilla `GlobalPos` and a `structureIndex` reverse lookup on `CartographySavedData`. Completes the PLANNED→REALIZED flow from Section 4.
 - Characteristics (Section 5.4) — `addCharacteristic`/`removeCharacteristic`/`getCharacteristics` on `Cartography`, backed by a `Set<Characteristic>` field directly on `GeographicEntity` (no index needed). `Characteristic` is `LUMBER, MINING, FARMING` for now.
-- `./gradlew build` and `./gradlew test` both green (8 tests total). Manually smoke-tested via `./gradlew runServer` — boots clean, `CartographyrMod`'s `ServerStartingEvent` listener confirms the wiring works at real server boot.
+- Amenities (Section 5.5) — `addAmenity`/`removeAmenity`/`getAmenities` on `Cartography`, same shape as Characteristics. `Amenity` is `MARKET, MINE, INN, HARBOR` for now.
+- `./gradlew build` and `./gradlew test` both green (10 tests total). Manually smoke-tested via `./gradlew runServer` — boots clean, `CartographyrMod`'s `ServerStartingEvent` listener confirms the wiring works at real server boot.
 - See [context/classes/](context/classes/) for per-class reference.
 
-Next: amenities, history, naming (Sections 5.5/5.6/5.3), or whichever phase the next real feature requires — no obligation to follow the phase list in strict order.
+Next: history, naming (Sections 5.6/5.3), or whichever phase the next real feature requires — no obligation to follow the phase list in strict order.

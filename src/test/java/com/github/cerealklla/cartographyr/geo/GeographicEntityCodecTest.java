@@ -28,6 +28,7 @@ class GeographicEntityCodecTest {
                 new Geometry.Point(100, -50),
                 LifecycleState.PLANNED,
                 Set.of(),
+                Set.of(),
                 Set.of()
         );
 
@@ -48,6 +49,7 @@ class GeographicEntityCodecTest {
                 new Geometry.Bounds(-10, -10, 10, 10),
                 LifecycleState.REALIZED,
                 Set.of(),
+                Set.of(),
                 Set.of()
         );
 
@@ -67,6 +69,7 @@ class GeographicEntityCodecTest {
                 new Geometry.Point(0, 0),
                 LifecycleState.REALIZED,
                 Set.of(GlobalPos.of(Level.OVERWORLD, new BlockPos(0, 64, 0))),
+                Set.of(),
                 Set.of()
         );
 
@@ -87,13 +90,35 @@ class GeographicEntityCodecTest {
                 new Geometry.Point(0, 0),
                 LifecycleState.REALIZED,
                 Set.of(),
-                Set.of(Characteristic.LUMBER, Characteristic.FARMING)
+                Set.of(Characteristic.LUMBER, Characteristic.FARMING),
+                Set.of()
         );
 
         GeographicEntity decoded = roundTrip(original);
 
         assertEquals(original, decoded);
         assertEquals(original.characteristics(), decoded.characteristics());
+    }
+
+    @Test
+    void roundTripsAmenities() {
+        GeographicEntity original = new GeographicEntity(
+                new EntityId(6L),
+                Level.OVERWORLD,
+                Classification.CONSTRUCTED,
+                EntityType.SETTLEMENT,
+                Optional.of("Nonceville"),
+                new Geometry.Point(0, 0),
+                LifecycleState.REALIZED,
+                Set.of(),
+                Set.of(),
+                Set.of(Amenity.MARKET, Amenity.INN)
+        );
+
+        GeographicEntity decoded = roundTrip(original);
+
+        assertEquals(original, decoded);
+        assertEquals(original.amenities(), decoded.amenities());
     }
 
     private static GeographicEntity roundTrip(GeographicEntity entity) {
