@@ -11,6 +11,7 @@ import java.util.Set;
 import com.github.cerealklla.cartographyr.api.Cartography;
 import com.github.cerealklla.cartographyr.geo.Classification;
 import com.github.cerealklla.cartographyr.geo.EntityDefinition;
+import com.github.cerealklla.cartographyr.geo.EntityType;
 import com.github.cerealklla.cartographyr.geo.GeographicEntity;
 import com.github.cerealklla.cartographyr.geo.Geometry;
 import com.github.cerealklla.cartographyr.geo.LifecycleState;
@@ -40,25 +41,44 @@ public final class NaturalRegionDiscovery {
     private NaturalRegionDiscovery() {
     }
 
-    /** Empty if the biome at {@code start} doesn't match any known {@link NaturalRegionProfile}. */
+    /**
+     * Empty if the biome at {@code start} doesn't match any known {@link NaturalRegionProfile}.
+     * If the newly discovered patch borders an already-discovered region of the same type, this
+     * extends that existing entity (keeping its name) instead of creating a new one — without
+     * this, walking along the border of a large forest across multiple discovery calls fragments
+     * it into several differently-named, overlapping-or-adjacent entities, causing the "You have
+     * entered X" message to flicker between names as you cross old boundaries. Confirmed with a
+     * real playtest before this fix existed; see decisions.md.
+     */
     public static Optional<GeographicEntity> discover(ServerLevel level, BlockPos start) {
         Holder<Biome> startBiome = level.getBiome(start);
-        Optional<NaturalRegionProfile> profile = NaturalRegionProfile.ALL.stream()
+        Optional<NaturalRegionProfile> profileOpt = NaturalRegionProfile.ALL.stream()
                 .filter(p -> p.matches(startBiome))
                 .findFirst();
-        if (profile.isEmpty()) {
+        if (profileOpt.isEmpty()) {
             return Optional.empty();
         }
+        NaturalRegionProfile profile = profileOpt.get();
 
-        Set<Long> cells = floodFill(level, start, profile.get());
-        String name = pickName(profile.get(), cells.size());
+        Set<Long> newCells = floodFill(level, start, profile);
 
+        Optional<GeographicEntity> adjacentSameType = findAdjacentSameTypeEntity(level, newCells, profile.type());
+        if (adjacentSameType.isPresent()) {
+            GeographicEntity existing = adjacentSameType.get();
+            // Safe cast: every entity this system creates uses Geometry.Region, and
+            // findAdjacentSameTypeEntity only returns entities of a profile's own EntityType.
+            Set<Long> mergedCells = new HashSet<>(((Geometry.Region) existing.geometry()).cells());
+            mergedCells.addAll(newCells);
+            return Cartography.updateEntity(level, existing.id(), e -> e.withGeometry(new Geometry.Region(mergedCells)));
+        }
+
+        String name = pickName(profile, newCells.size());
         GeographicEntity created = Cartography.createEntity(level, new EntityDefinition(
                 level.dimension(),
                 Classification.NATURAL,
-                profile.get().type(),
+                profile.type(),
                 Optional.of(name),
-                new Geometry.Region(cells),
+                new Geometry.Region(newCells),
                 LifecycleState.REALIZED
         ));
         return Optional.of(created);
@@ -88,8 +108,16 @@ public final class NaturalRegionDiscovery {
                     }
 
                     ChunkPos neighborPos = ChunkPos.unpack(neighborKey);
-                    BlockPos samplePos = new BlockPos(neighborPos.getMiddleBlockX(), y, neighborPos.getMiddleBlockZ());
-                    if (profile.matches(level.getBiome(samplePos))) {
+                    int sampleX = neighborPos.getMiddleBlockX();
+                    int sampleZ = neighborPos.getMiddleBlockZ();
+
+                    // Never expand into a cell some other entity (natural or constructed) already
+                    // claims -- prevents overlap and, combined with the merge step in discover(),
+                    // is what stops the same forest fragmenting into multiple entities.
+                    boolean alreadyClaimed = !Cartography.getEntitiesAt(level, sampleX, sampleZ).isEmpty();
+                    boolean biomeMatches = profile.matches(level.getBiome(new BlockPos(sampleX, y, sampleZ)));
+
+                    if (biomeMatches && !alreadyClaimed) {
                         visited.add(neighborKey);
                         queue.add(neighborKey);
                         if (visited.size() >= MAX_CELLS) {
@@ -101,6 +129,39 @@ public final class NaturalRegionDiscovery {
         }
 
         return visited;
+    }
+
+    /**
+     * Scans the cells immediately bordering {@code newCells} (but not in it) for an existing
+     * NATURAL entity of the given type. Only merges into the first one found — if the new patch
+     * happens to bridge a gap between two separately-discovered same-type regions, the second one
+     * is left unmerged (a known limitation; full multi-entity consolidation isn't built).
+     */
+    private static Optional<GeographicEntity> findAdjacentSameTypeEntity(ServerLevel level, Set<Long> newCells, EntityType type) {
+        Set<Long> borderCells = new HashSet<>();
+        for (long cell : newCells) {
+            ChunkPos pos = ChunkPos.unpack(cell);
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    if (dx == 0 && dz == 0) {
+                        continue;
+                    }
+                    long neighborKey = ChunkPos.pack(pos.x() + dx, pos.z() + dz);
+                    if (!newCells.contains(neighborKey)) {
+                        borderCells.add(neighborKey);
+                    }
+                }
+            }
+        }
+
+        for (long border : borderCells) {
+            ChunkPos pos = ChunkPos.unpack(border);
+            Optional<GeographicEntity> natural = Cartography.getNaturalRegionAt(level, pos.getMiddleBlockX(), pos.getMiddleBlockZ());
+            if (natural.isPresent() && natural.get().type() == type) {
+                return natural;
+            }
+        }
+        return Optional.empty();
     }
 
     private static String pickName(NaturalRegionProfile profile, int cellCount) {
