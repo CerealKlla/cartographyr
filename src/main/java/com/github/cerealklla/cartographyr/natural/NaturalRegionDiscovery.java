@@ -15,6 +15,7 @@ import com.github.cerealklla.cartographyr.geo.EntityDefinition;
 import com.github.cerealklla.cartographyr.geo.EntityType;
 import com.github.cerealklla.cartographyr.geo.GeographicEntity;
 import com.github.cerealklla.cartographyr.geo.Geometry;
+import com.github.cerealklla.cartographyr.geo.Layer;
 import com.github.cerealklla.cartographyr.geo.LifecycleState;
 
 import net.minecraft.core.BlockPos;
@@ -86,6 +87,7 @@ public final class NaturalRegionDiscovery {
                 level.dimension(),
                 Classification.NATURAL,
                 profile.type(),
+                Layer.LOCATION_ID,
                 Optional.of(name),
                 new Geometry.Region(newCells),
                 LifecycleState.REALIZED

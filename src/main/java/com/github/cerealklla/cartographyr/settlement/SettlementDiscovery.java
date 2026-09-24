@@ -12,8 +12,11 @@ import com.github.cerealklla.cartographyr.geo.EntityDefinition;
 import com.github.cerealklla.cartographyr.geo.EntityType;
 import com.github.cerealklla.cartographyr.geo.GeographicEntity;
 import com.github.cerealklla.cartographyr.geo.Geometry;
+import com.github.cerealklla.cartographyr.geo.Layer;
 import com.github.cerealklla.cartographyr.geo.LifecycleState;
+import com.github.cerealklla.cartographyr.natural.NaturalRegionProfile;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -31,12 +34,11 @@ import net.minecraft.world.level.levelgen.structure.StructureStart;
  */
 public final class SettlementDiscovery {
 
-    // Deliberately a single flat pool for v1, not small/large tiers like NaturalRegionProfile --
-    // villages don't vary enough in this first cut to justify it. Revisit if that turns out wrong.
-    private static final List<String> NAMES = List.of(
-            "Millhaven", "Oakstead", "Riverbend", "Stonewick", "Hearthfield",
-            "Ashford", "Cobble Hollow", "Wheatfield", "Brookside", "Thornbury"
-    );
+    // How far out (and where) to sample for a nearby natural feature to theme the name off of --
+    // deliberately a small, non-exhaustive point set, same "sample a handful of points, not every
+    // block" precedent as NaturalRegionDiscovery.chunkMatchesProfile's 5-point cross.
+    private static final int[] SAMPLE_RADII = {32, 64};
+
     private static final Random RANDOM = new Random();
 
     private SettlementDiscovery() {
@@ -54,12 +56,14 @@ public final class SettlementDiscovery {
         }
         Geometry footprint = Geometry.Polygon.convexHull(corners);
 
-        String name = NAMES.get(RANDOM.nextInt(NAMES.size()));
+        Optional<EntityType> nearbyFeature = findNearbyNaturalFeature(level, start);
+        String name = SettlementNaming.pick(nearbyFeature, RANDOM);
 
         GeographicEntity created = Cartography.createEntity(level, new EntityDefinition(
                 level.dimension(),
                 Classification.CONSTRUCTED,
                 EntityType.SETTLEMENT,
+                Layer.LOCATION_ID,
                 Optional.of(name),
                 footprint,
                 LifecycleState.REALIZED
@@ -74,5 +78,35 @@ public final class SettlementDiscovery {
                 footprint instanceof Geometry.Polygon polygon ? polygon.vertices().size() : "bounds-fallback");
 
         return created;
+    }
+
+    /**
+     * Samples a small, non-exhaustive ring of points around the structure's center for a matching
+     * {@link NaturalRegionProfile} (reusing Natural Geography's own biome-matching logic directly,
+     * not a duplicate copy). Center is checked first, then a 32-block ring, then a 64-block ring --
+     * closer features win. {@link EntityType#PLAINS} is deliberately excluded from "found a
+     * feature": it's the most common biome and has no strong visual identity, so without this
+     * exclusion a plains village with a river just outside the inner ring would short-circuit on
+     * its own uninteresting biome before ever sampling further out.
+     */
+    private static Optional<EntityType> findNearbyNaturalFeature(ServerLevel level, StructureStart start) {
+        BlockPos center = start.getBoundingBox().getCenter();
+
+        List<BlockPos> samples = new ArrayList<>();
+        samples.add(center);
+        for (int radius : SAMPLE_RADII) {
+            samples.add(center.offset(radius, 0, 0));
+            samples.add(center.offset(-radius, 0, 0));
+            samples.add(center.offset(0, 0, radius));
+            samples.add(center.offset(0, 0, -radius));
+        }
+
+        for (BlockPos pos : samples) {
+            Optional<NaturalRegionProfile> match = NaturalRegionProfile.find(level.getBiome(pos));
+            if (match.isPresent() && !match.get().type().equals(EntityType.PLAINS)) {
+                return Optional.of(match.get().type());
+            }
+        }
+        return Optional.empty();
     }
 }

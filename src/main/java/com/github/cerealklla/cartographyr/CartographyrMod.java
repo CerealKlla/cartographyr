@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 
 import com.github.cerealklla.cartographyr.api.Cartography;
+import com.github.cerealklla.cartographyr.geo.Layer;
 import com.github.cerealklla.cartographyr.settlement.SettlementListener;
 
 import net.minecraft.world.level.Level;
@@ -24,6 +25,10 @@ public class CartographyrMod {
 
     public CartographyrMod(IEventBus modEventBus, ModContainer modContainer) {
         modEventBus.addListener(this::commonSetup);
+
+        // Cartographyr's own natural/settlement/inclusions detection all shares this one built-in
+        // layer -- a Territory mod or similar would register its own at a different placement.
+        Cartography.registerLayer(new Layer(Layer.LOCATION_ID, "Location", 0));
 
         // Game-bus listener (not the mod bus above) — this is what actually triggers
         // CartographySavedData.TYPE's registration at real server boot, proving the wiring

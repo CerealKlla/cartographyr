@@ -1,6 +1,7 @@
 package com.github.cerealklla.cartographyr.natural;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import com.github.cerealklla.cartographyr.geo.EntityType;
@@ -12,17 +13,19 @@ import net.minecraft.world.level.biome.Biomes;
 
 /**
  * Pairs a set of vanilla biomes with an {@link EntityType} and two tiers of name options, for
- * {@link NaturalRegionDiscovery}. Internal to {@code .natural} — not part of Cartographyr's
- * persisted data or public API, just discovery-time configuration.
+ * {@link NaturalRegionDiscovery}. Not part of Cartographyr's persisted data or public API, just
+ * discovery-time configuration — but made {@code public} (widened 2026-09-24) so {@code
+ * .settlement.SettlementDiscovery} can reuse the same biome-matching logic for contextual
+ * settlement naming, rather than duplicating a second copy of the biome-family mapping.
  *
  * <p>Covers the common overworld surface land biome families, matching the design document's
  * "discovered incrementally... not exhaustively" instruction (Section 5.8) — deliberately still
  * not everything: oceans, beaches, mushroom fields, cherry groves, ice spikes, and cave/Nether/End
  * biomes have no profile. Adding one for another biome family is a small, self-contained addition.
  */
-record NaturalRegionProfile(EntityType type, Set<ResourceKey<Biome>> biomes, List<String> smallNames, List<String> largeNames) {
+public record NaturalRegionProfile(EntityType type, Set<ResourceKey<Biome>> biomes, List<String> smallNames, List<String> largeNames) {
 
-    static final List<NaturalRegionProfile> ALL = List.of(
+    public static final List<NaturalRegionProfile> ALL = List.of(
             new NaturalRegionProfile(
                     EntityType.DESERT,
                     Set.of(Biomes.DESERT),
@@ -90,7 +93,12 @@ record NaturalRegionProfile(EntityType type, Set<ResourceKey<Biome>> biomes, Lis
             )
     );
 
-    boolean matches(Holder<Biome> biome) {
+    public boolean matches(Holder<Biome> biome) {
         return biomes.stream().anyMatch(biome::is);
+    }
+
+    /** First profile (in declaration order) whose biome set contains {@code biome}, if any. */
+    public static Optional<NaturalRegionProfile> find(Holder<Biome> biome) {
+        return ALL.stream().filter(p -> p.matches(biome)).findFirst();
     }
 }

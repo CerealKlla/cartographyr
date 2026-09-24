@@ -1,5 +1,6 @@
 package com.github.cerealklla.cartographyr.api;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -14,11 +15,14 @@ import com.github.cerealklla.cartographyr.geo.EntityType;
 import com.github.cerealklla.cartographyr.geo.GeographicEntity;
 import com.github.cerealklla.cartographyr.geo.Geometry;
 import com.github.cerealklla.cartographyr.geo.HistoricalFact;
+import com.github.cerealklla.cartographyr.geo.Layer;
+import com.github.cerealklla.cartographyr.geo.LayerRegistry;
 import com.github.cerealklla.cartographyr.natural.NaturalRegionDiscovery;
 import com.github.cerealklla.cartographyr.storage.CartographySavedData;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -263,5 +267,23 @@ public final class Cartography {
      */
     public static Optional<GeographicEntity> discoverNaturalRegion(ServerLevel level, BlockPos pos) {
         return NaturalRegionDiscovery.discover(level, pos);
+    }
+
+    // Layer registration (design doc's "open N-layer entity model," decisions.md 2026-09-24) --
+    // deliberately no MinecraftServer/ServerLevel parameter, unlike everything else in this
+    // facade: layers are registered once at mod startup, before any world/server exists, and the
+    // registry is in-memory/global, not per-save data. Cartographyr only owns this as a data
+    // registry; it does not render anything with it (see Layer's own Javadoc).
+
+    public static void registerLayer(Layer layer) {
+        LayerRegistry.register(layer);
+    }
+
+    public static Optional<Layer> getLayer(Identifier id) {
+        return LayerRegistry.get(id);
+    }
+
+    public static Collection<Layer> getRegisteredLayers() {
+        return LayerRegistry.all();
     }
 }
