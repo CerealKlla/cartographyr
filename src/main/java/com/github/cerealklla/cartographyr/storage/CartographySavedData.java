@@ -11,6 +11,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import com.github.cerealklla.cartographyr.CartographyrMod;
+import com.github.cerealklla.cartographyr.geo.Characteristic;
 import com.github.cerealklla.cartographyr.geo.EntityDefinition;
 import com.github.cerealklla.cartographyr.geo.EntityId;
 import com.github.cerealklla.cartographyr.geo.GeographicEntity;
@@ -150,5 +151,21 @@ public final class CartographySavedData extends SavedData {
     /** @apiNote Not the intended integration point — use {@code Cartography.getEntityForStructure} instead. */
     public Optional<EntityId> getEntityForStructure(GlobalPos structureReference) {
         return Optional.ofNullable(structureIndex.get(structureReference));
+    }
+
+    /** @apiNote Not the intended integration point — use {@code Cartography.addCharacteristic} instead. */
+    public Optional<GeographicEntity> addCharacteristic(EntityId id, Characteristic characteristic) {
+        return updateEntity(id, entity -> entity.withAddedCharacteristic(characteristic));
+    }
+
+    /** @apiNote Not the intended integration point — use {@code Cartography.removeCharacteristic} instead. */
+    public Optional<GeographicEntity> removeCharacteristic(EntityId id, Characteristic characteristic) {
+        return updateEntity(id, entity -> entity.withRemovedCharacteristic(characteristic));
+    }
+
+    /** @apiNote Not the intended integration point — use {@code Cartography.getCharacteristics} instead. */
+    public Set<Characteristic> getCharacteristics(EntityId id) {
+        GeographicEntity entity = entities.get(id);
+        return entity == null ? Set.of() : entity.characteristics();
     }
 }

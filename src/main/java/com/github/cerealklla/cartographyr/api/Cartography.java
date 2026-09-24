@@ -4,6 +4,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.UnaryOperator;
 
+import com.github.cerealklla.cartographyr.geo.Characteristic;
 import com.github.cerealklla.cartographyr.geo.EntityDefinition;
 import com.github.cerealklla.cartographyr.geo.EntityId;
 import com.github.cerealklla.cartographyr.geo.GeographicEntity;
@@ -101,5 +102,34 @@ public final class Cartography {
 
     public static Optional<EntityId> getEntityForStructure(ServerLevel level, GlobalPos structureReference) {
         return getEntityForStructure(level.getServer(), structureReference);
+    }
+
+    /**
+     * Records an evolving economic/functional specialty on an entity (design doc Section 5.4).
+     * Cartography just records this — deciding *why* an entity gained a characteristic is
+     * Economy/settlement logic's job, done elsewhere before calling this.
+     */
+    public static Optional<GeographicEntity> addCharacteristic(MinecraftServer server, EntityId id, Characteristic characteristic) {
+        return data(server).addCharacteristic(id, characteristic);
+    }
+
+    public static Optional<GeographicEntity> addCharacteristic(ServerLevel level, EntityId id, Characteristic characteristic) {
+        return addCharacteristic(level.getServer(), id, characteristic);
+    }
+
+    public static Optional<GeographicEntity> removeCharacteristic(MinecraftServer server, EntityId id, Characteristic characteristic) {
+        return data(server).removeCharacteristic(id, characteristic);
+    }
+
+    public static Optional<GeographicEntity> removeCharacteristic(ServerLevel level, EntityId id, Characteristic characteristic) {
+        return removeCharacteristic(level.getServer(), id, characteristic);
+    }
+
+    public static Set<Characteristic> getCharacteristics(MinecraftServer server, EntityId id) {
+        return data(server).getCharacteristics(id);
+    }
+
+    public static Set<Characteristic> getCharacteristics(ServerLevel level, EntityId id) {
+        return getCharacteristics(level.getServer(), id);
     }
 }

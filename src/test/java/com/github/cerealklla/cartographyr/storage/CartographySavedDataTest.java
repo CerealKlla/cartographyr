@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import com.mojang.serialization.DataResult;
 
+import com.github.cerealklla.cartographyr.geo.Characteristic;
 import com.github.cerealklla.cartographyr.geo.Classification;
 import com.github.cerealklla.cartographyr.geo.EntityDefinition;
 import com.github.cerealklla.cartographyr.geo.EntityId;
@@ -109,6 +110,31 @@ class CartographySavedDataTest {
 
         EntityId secondId = second.id();
         assertEquals(Set.of(), data.getAssociatedStructures(secondId));
+    }
+
+    @Test
+    void characteristicsCanBeAddedRemovedAndSurviveReload() {
+        CartographySavedData data = new CartographySavedData();
+
+        GeographicEntity created = data.createEntity(new EntityDefinition(
+                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT,
+                Optional.of("Nonceville"), new Geometry.Point(0, 0), LifecycleState.REALIZED
+        ));
+
+        assertEquals(Set.of(), data.getCharacteristics(created.id()));
+
+        Optional<GeographicEntity> afterAdd = data.addCharacteristic(created.id(), Characteristic.LUMBER);
+        assertTrue(afterAdd.isPresent());
+        assertEquals(Set.of(Characteristic.LUMBER), data.getCharacteristics(created.id()));
+
+        data.addCharacteristic(created.id(), Characteristic.FARMING);
+        assertEquals(Set.of(Characteristic.LUMBER, Characteristic.FARMING), data.getCharacteristics(created.id()));
+
+        data.removeCharacteristic(created.id(), Characteristic.FARMING);
+        assertEquals(Set.of(Characteristic.LUMBER), data.getCharacteristics(created.id()));
+
+        CartographySavedData reloaded = simulateReload(data);
+        assertEquals(Set.of(Characteristic.LUMBER), reloaded.getCharacteristics(created.id()));
     }
 
     // Goes through CartographySavedData.TYPE's own codec factory, not a private test-only codec,

@@ -27,6 +27,7 @@ class GeographicEntityCodecTest {
                 Optional.of("Capital City of Nonce"),
                 new Geometry.Point(100, -50),
                 LifecycleState.PLANNED,
+                Set.of(),
                 Set.of()
         );
 
@@ -46,6 +47,7 @@ class GeographicEntityCodecTest {
                 Optional.empty(),
                 new Geometry.Bounds(-10, -10, 10, 10),
                 LifecycleState.REALIZED,
+                Set.of(),
                 Set.of()
         );
 
@@ -64,13 +66,34 @@ class GeographicEntityCodecTest {
                 Optional.of("Nonceville"),
                 new Geometry.Point(0, 0),
                 LifecycleState.REALIZED,
-                Set.of(GlobalPos.of(Level.OVERWORLD, new BlockPos(0, 64, 0)))
+                Set.of(GlobalPos.of(Level.OVERWORLD, new BlockPos(0, 64, 0))),
+                Set.of()
         );
 
         GeographicEntity decoded = roundTrip(original);
 
         assertEquals(original, decoded);
         assertEquals(original.structureReferences(), decoded.structureReferences());
+    }
+
+    @Test
+    void roundTripsCharacteristics() {
+        GeographicEntity original = new GeographicEntity(
+                new EntityId(5L),
+                Level.OVERWORLD,
+                Classification.CONSTRUCTED,
+                EntityType.SETTLEMENT,
+                Optional.of("Nonceville"),
+                new Geometry.Point(0, 0),
+                LifecycleState.REALIZED,
+                Set.of(),
+                Set.of(Characteristic.LUMBER, Characteristic.FARMING)
+        );
+
+        GeographicEntity decoded = roundTrip(original);
+
+        assertEquals(original, decoded);
+        assertEquals(original.characteristics(), decoded.characteristics());
     }
 
     private static GeographicEntity roundTrip(GeographicEntity entity) {
