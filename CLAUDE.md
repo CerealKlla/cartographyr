@@ -30,6 +30,9 @@ Phase 0 (Version/Loader Lock) — decided 2026-09-23, see [context/decisions.md]
 - Java: **JDK 25** (standalone Eclipse Temurin, JAVA_HOME set)
 - Group ID: `com.github.cerealklla.cartographyr` / Mod ID: `cartographyr`
 
-Gradle project scaffolded from the official NeoForge MDK (ModDevGradle plugin). Minimal `CartographyrMod` / `CartographyrModClient` entry points in place, no example content. First `gradlew build` run to verify the toolchain — check its result before assuming the build is green.
+Phase 1 minimal milestone (design-document.md Appendix B) — implemented 2026-09-23, see [context/decisions.md](context/decisions.md):
+- `.geo`/`.storage`/`.api` package split; `EntityId`, `GeographicEntity`, point/bounds `Geometry`, world-level `CartographySavedData`, chunk-grid `SpatialIndex`, and the `Cartography` public facade (create/get/update/retire/getEntitiesAt).
+- `./gradlew build` and `./gradlew test` both green (2 codec round-trip tests + 1 save/reload-equivalent test). Manually smoke-tested via `./gradlew runServer` — boots clean, `CartographyrMod`'s `ServerStartingEvent` listener confirms the wiring works at real server boot.
+- See [context/classes/](context/classes/) for per-class reference.
 
-Next: Phase 1 (Core Data Model) per design-document.md Section 12.
+Next: expand toward the rest of Phase 1/2 per design-document.md Section 12 (characteristics, amenities, history, structure association) as needed, or move to whichever phase the next real feature requires — no obligation to follow the phase list in strict order.
