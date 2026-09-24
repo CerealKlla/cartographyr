@@ -39,6 +39,11 @@ public final class NaturalRegionDiscovery {
     private static final int LARGE_REGION_THRESHOLD = 30;
     private static final Random RANDOM = new Random();
 
+    // How far off the chunk's exact middle block the four extra sample points sit (see
+    // chunkMatchesProfile). Chosen to stay well within the chunk's 16-block width regardless of
+    // rounding (middle +/- 5 is always inside 0-15).
+    private static final int SAMPLE_OFFSET = 5;
+
     private NaturalRegionDiscovery() {
     }
 
@@ -122,7 +127,7 @@ public final class NaturalRegionDiscovery {
                     // claims -- prevents overlap and, combined with the merge step in discover(),
                     // is what stops the same forest fragmenting into multiple entities.
                     boolean alreadyClaimed = !Cartography.getEntitiesAt(level, sampleX, sampleZ).isEmpty();
-                    boolean biomeMatches = profile.matches(level.getBiome(new BlockPos(sampleX, y, sampleZ)));
+                    boolean biomeMatches = chunkMatchesProfile(level, neighborPos, y, profile);
 
                     if (biomeMatches && !alreadyClaimed) {
                         visited.add(neighborKey);
@@ -136,6 +141,41 @@ public final class NaturalRegionDiscovery {
         }
 
         return visited;
+    }
+
+    /**
+     * Whether any of five sample points across this chunk (its exact middle, plus four points
+     * offset {@link #SAMPLE_OFFSET} blocks north/south/east/west of it) match {@code profile}.
+     *
+     * <p>Sampling only the exact middle point (the original approach) badly fragments narrow,
+     * grid-misaligned natural features — rivers especially: a winding river frequently doesn't
+     * cross a chunk's precise middle point even while visibly running through much of the chunk,
+     * so that chunk would get claimed by whatever <em>does</em> sit at the middle (typically the
+     * biome the river cuts through), permanently blocking the river from ever claiming it later
+     * (cells can't be reclaimed once any entity holds them). Confirmed via a real playtest: a
+     * single physical river had split into two differently-named entities with a "forest"-claimed
+     * gap in the middle. Sampling a small cross of points instead makes it far more likely a chunk
+     * a river actually passes through gets correctly recognized as river. This doesn't fully
+     * eliminate the issue -- a chunk genuinely split between two biomes still has to be claimed by
+     * whichever discovery reaches it first, "any point matches" or not -- but meaningfully reduces
+     * it. See decisions.md, 2026-09-24.
+     */
+    private static boolean chunkMatchesProfile(ServerLevel level, ChunkPos pos, int y, NaturalRegionProfile profile) {
+        int midX = pos.getMiddleBlockX();
+        int midZ = pos.getMiddleBlockZ();
+        int[][] points = {
+                {midX, midZ},
+                {midX - SAMPLE_OFFSET, midZ},
+                {midX + SAMPLE_OFFSET, midZ},
+                {midX, midZ - SAMPLE_OFFSET},
+                {midX, midZ + SAMPLE_OFFSET}
+        };
+        for (int[] point : points) {
+            if (profile.matches(level.getBiome(new BlockPos(point[0], y, point[1])))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
