@@ -28,6 +28,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 
@@ -277,6 +278,37 @@ class CartographySavedDataTest {
 
         // Not classification-restricted -- works for the constructed entity too.
         assertTrue(data.getRegionBounds(settlement.id()).isPresent());
+    }
+
+    @Test
+    void thirdPartyNamespacedTypeSurvivesReloadAndEqualityLookups() {
+        // Simulates a mod other than Cartographyr tagging an entity with its own EntityType/
+        // Classification (e.g. a future Factions mod) -- the whole point of the open,
+        // Identifier-keyed migration (see decisions.md, 2026-09-24). No registration step exists;
+        // any namespace works.
+        EntityType factionTerritory = new EntityType(Identifier.fromNamespaceAndPath("factionsmod", "territory"));
+        Classification claimed = new Classification(Identifier.fromNamespaceAndPath("factionsmod", "claimed"));
+
+        CartographySavedData data = new CartographySavedData();
+        GeographicEntity territory = data.createEntity(new EntityDefinition(
+                Level.OVERWORLD, claimed, factionTerritory,
+                Optional.of("Redguard Claim"), new Geometry.Point(10, 10), LifecycleState.REALIZED
+        ));
+
+        CartographySavedData reloaded = simulateReload(data);
+        Optional<GeographicEntity> reloadedEntity = reloaded.getEntity(territory.id());
+        assertTrue(reloadedEntity.isPresent());
+
+        // A freshly-constructed EntityType/Classification instance for the same id must be .equals()
+        // to the one decoded from storage -- these are records now, not enum singletons, so this is
+        // the actual regression this migration could introduce if left unverified.
+        assertEquals(new EntityType(Identifier.fromNamespaceAndPath("factionsmod", "territory")), reloadedEntity.get().type());
+        assertEquals(new Classification(Identifier.fromNamespaceAndPath("factionsmod", "claimed")), reloadedEntity.get().classification());
+
+        // findNaturalRegions filters on Classification.NATURAL, so a CONSTRUCTED-style third-party
+        // classification correctly finds nothing here -- confirms .equals() (not identity) is doing
+        // the real filtering work end to end, including through a third-party classification value.
+        assertEquals(Set.of(), data.findNaturalRegions(Level.OVERWORLD, factionTerritory));
     }
 
     // Goes through CartographySavedData.TYPE's own codec factory, not a private test-only codec,

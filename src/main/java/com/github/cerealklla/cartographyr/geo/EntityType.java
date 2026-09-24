@@ -2,11 +2,26 @@ package com.github.cerealklla.cartographyr.geo;
 
 import com.mojang.serialization.Codec;
 
+import com.github.cerealklla.cartographyr.CartographyrMod;
+
+import net.minecraft.resources.Identifier;
+
 /**
- * The kind of geographic entity. The design document treats this list as illustrative examples
- * rather than exhaustive; this is a closed enum for the first milestone only — if other mods
- * eventually need to define their own types, this will need to become an open/registry-backed
- * type instead. Not needed yet.
+ * The kind of geographic entity, keyed by an {@link Identifier} rather than a closed Java enum.
+ * This is deliberately open: any mod calling {@code Cartography.createEntity} can tag an entity
+ * with its own type (e.g. a future Factions mod's {@code new EntityType(Identifier.fromNamespaceAndPath("factionsmod", "territory"))})
+ * without touching Cartographyr's source — the same open-extension shape as vanilla registries and
+ * NeoForge tags. Writes are trust-based: any mod may create entities under any namespace, including
+ * one it doesn't own (decided 2026-09-24, see decisions.md — no claiming/registration step exists or
+ * is planned).
+ *
+ * <p>Because two separately-constructed instances of the same id are different objects, comparisons
+ * must use {@link #equals(Object)}, never {@code ==} — this replaced a closed enum (see decisions.md,
+ * 2026-09-24) where {@code ==} happened to work.
+ *
+ * <p>The constants below are Cartographyr's own built-in types, namespaced under {@link
+ * CartographyrMod#MODID}. They exist purely for source convenience (so {@code EntityType.DESERT}
+ * etc. keep compiling) — nothing about the type is special-cased for them.
  *
  * <p>Deliberately no VILLAGE/TOWN/CITY tier distinction: that's a population/prestige
  * classification Cartography doesn't own (Section 14 — government/economy are out of scope).
@@ -23,21 +38,31 @@ import com.mojang.serialization.Codec;
  * groves, ice spikes, and cave/Nether/End biomes have no profile yet — see {@code
  * NaturalRegionProfile} and design doc Section 5.8's "incremental, not exhaustive" guidance.
  */
-public enum EntityType {
-    REGION,
-    MOUNTAIN,
-    RIVER,
-    DESERT,
-    FOREST,
-    PLAINS,
-    SWAMP,
-    TAIGA,
-    JUNGLE,
-    SAVANNA,
-    BADLANDS,
-    SETTLEMENT,
-    MINE,
-    ROAD;
+public record EntityType(Identifier id) {
 
-    public static final Codec<EntityType> CODEC = Codec.STRING.xmap(EntityType::valueOf, Enum::name);
+    public static final Codec<EntityType> CODEC = Identifier.CODEC.xmap(EntityType::new, EntityType::id);
+
+    public static final EntityType REGION = builtin("region");
+    public static final EntityType MOUNTAIN = builtin("mountain");
+    public static final EntityType RIVER = builtin("river");
+    public static final EntityType DESERT = builtin("desert");
+    public static final EntityType FOREST = builtin("forest");
+    public static final EntityType PLAINS = builtin("plains");
+    public static final EntityType SWAMP = builtin("swamp");
+    public static final EntityType TAIGA = builtin("taiga");
+    public static final EntityType JUNGLE = builtin("jungle");
+    public static final EntityType SAVANNA = builtin("savanna");
+    public static final EntityType BADLANDS = builtin("badlands");
+    public static final EntityType SETTLEMENT = builtin("settlement");
+    public static final EntityType MINE = builtin("mine");
+    public static final EntityType ROAD = builtin("road");
+
+    private static EntityType builtin(String path) {
+        return new EntityType(Identifier.fromNamespaceAndPath(CartographyrMod.MODID, path));
+    }
+
+    @Override
+    public String toString() {
+        return id.toString();
+    }
 }

@@ -204,7 +204,7 @@ public final class NaturalRegionDiscovery {
         for (long border : borderCells) {
             ChunkPos pos = ChunkPos.unpack(border);
             Optional<GeographicEntity> natural = Cartography.getNaturalRegionAt(level, pos.getMiddleBlockX(), pos.getMiddleBlockZ());
-            if (natural.isPresent() && natural.get().type() == type) {
+            if (natural.isPresent() && natural.get().type().equals(type)) {
                 return natural;
             }
         }

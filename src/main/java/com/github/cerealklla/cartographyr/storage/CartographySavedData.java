@@ -223,7 +223,7 @@ public final class CartographySavedData extends SavedData {
     /** @apiNote Not the intended integration point — use {@code Cartography.getNaturalRegionAt} instead. */
     public Optional<GeographicEntity> getNaturalRegionAt(ResourceKey<Level> dimension, int x, int z) {
         return getEntitiesAt(dimension, x, z).stream()
-                .filter(entity -> entity.classification() == Classification.NATURAL)
+                .filter(entity -> entity.classification().equals(Classification.NATURAL))
                 .findFirst();
     }
 
@@ -236,9 +236,9 @@ public final class CartographySavedData extends SavedData {
     public Set<GeographicEntity> findNaturalRegions(ResourceKey<Level> dimension, EntityType type) {
         Set<GeographicEntity> result = new HashSet<>();
         for (GeographicEntity entity : entities.values()) {
-            if (entity.classification() == Classification.NATURAL
+            if (entity.classification().equals(Classification.NATURAL)
                     && entity.dimension().equals(dimension)
-                    && entity.type() == type) {
+                    && entity.type().equals(type)) {
                 result.add(entity);
             }
         }
