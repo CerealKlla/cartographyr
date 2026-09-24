@@ -15,10 +15,13 @@ import com.mojang.serialization.Codec;
  * SETTLEMENT with {@link LifecycleState#ABANDONED} or {@link LifecycleState#DESTROYED}, not a
  * different type.
  *
- * <p>DESERT/FOREST (added for Natural Geography, Section 5.8) are a different case from the
- * VILLAGE/TOWN/CITY removal above: they're intrinsic, physically-observable terrain properties
- * (biome-driven, stable over time), not a socially-constructed tier — structurally the same kind
- * of value as MOUNTAIN/RIVER, which were never in question.
+ * <p>DESERT/FOREST/PLAINS/SWAMP/TAIGA/JUNGLE/SAVANNA/BADLANDS (added for Natural Geography,
+ * Section 5.8) are a different case from the VILLAGE/TOWN/CITY removal above: they're intrinsic,
+ * physically-observable terrain properties (biome-driven, stable over time), not a
+ * socially-constructed tier — structurally the same kind of value as MOUNTAIN/RIVER, which were
+ * never in question. Deliberately still not exhaustive: oceans, beaches, mushroom fields, cherry
+ * groves, ice spikes, and cave/Nether/End biomes have no profile yet — see {@code
+ * NaturalRegionProfile} and design doc Section 5.8's "incremental, not exhaustive" guidance.
  */
 public enum EntityType {
     REGION,
@@ -26,6 +29,12 @@ public enum EntityType {
     RIVER,
     DESERT,
     FOREST,
+    PLAINS,
+    SWAMP,
+    TAIGA,
+    JUNGLE,
+    SAVANNA,
+    BADLANDS,
     SETTLEMENT,
     MINE,
     ROAD;

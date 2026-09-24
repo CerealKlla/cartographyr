@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 
+import com.github.cerealklla.cartographyr.CartographyrMod;
 import com.github.cerealklla.cartographyr.api.Cartography;
 import com.github.cerealklla.cartographyr.geo.Classification;
 import com.github.cerealklla.cartographyr.geo.EntityDefinition;
@@ -69,6 +70,9 @@ public final class NaturalRegionDiscovery {
             // findAdjacentSameTypeEntity only returns entities of a profile's own EntityType.
             Set<Long> mergedCells = new HashSet<>(((Geometry.Region) existing.geometry()).cells());
             mergedCells.addAll(newCells);
+            CartographyrMod.LOGGER.info(
+                    "Natural region discovery: merged {} new cell(s) into existing {} '{}' ({}), now {} cell(s) total",
+                    newCells.size(), existing.id(), existing.name().orElse("?"), profile.type(), mergedCells.size());
             return Cartography.updateEntity(level, existing.id(), e -> e.withGeometry(new Geometry.Region(mergedCells)));
         }
 
@@ -81,6 +85,9 @@ public final class NaturalRegionDiscovery {
                 new Geometry.Region(newCells),
                 LifecycleState.REALIZED
         ));
+        CartographyrMod.LOGGER.info(
+                "Natural region discovery: created new {} '{}' ({}) with {} cell(s)",
+                created.id(), name, profile.type(), newCells.size());
         return Optional.of(created);
     }
 

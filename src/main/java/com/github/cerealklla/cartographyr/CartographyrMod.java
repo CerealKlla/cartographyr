@@ -81,6 +81,8 @@ public class CartographyrMod {
         int z = player.getBlockZ();
 
         Set<GeographicEntity> here = Cartography.getEntitiesAt(level, x, z);
+        LOGGER.info("Position check ({}, {}): {} entit(y/ies) here: {}", x, z, here.size(),
+                here.stream().map(e -> e.id() + "/" + e.name().orElse("?")).toList());
         if (!here.isEmpty()) {
             notifyIfChanged(player, here.iterator().next());
             return;
@@ -93,11 +95,13 @@ public class CartographyrMod {
     private void notifyIfChanged(ServerPlayer player, GeographicEntity entity) {
         EntityId lastNotified = lastNotifiedRegion.get(player.getUUID());
         if (entity.id().equals(lastNotified)) {
+            LOGGER.info("Suppressed repeat notification for {} (already last-notified)", entity.id());
             return;
         }
         lastNotifiedRegion.put(player.getUUID(), entity.id());
 
         String name = entity.name().orElse("an unnamed place");
+        LOGGER.info("Sending notification: entered {} ('{}')", entity.id(), name);
         player.sendSystemMessage(Component.literal("You have entered " + name));
     }
 }
