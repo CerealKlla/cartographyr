@@ -19,6 +19,10 @@ public final class RegionWordPools {
     public static final List<String> CLIMATE_COLD = List.of("Frozen", "Frosted", "Chilly", "Frostbound", "Wintry");
     public static final List<String> CLIMATE_HOT = List.of("Sunbaked", "Scorched", "Parched", "Blazing", "Sweltering");
 
-    /** Not tied to any particular size/climate/biome -- a wildcard flavor pool, usable with any terrain noun. */
+    /**
+     * Not tied to any particular size/climate/biome -- a wildcard pool used as an occasional
+     * trailing "of &lt;word&gt;" (e.g. "The Ancient Woods of Sorrow"), not a fourth interchangeable
+     * prefix category -- see {@code natural.NaturalRegionDiscovery#pickName}.
+     */
     public static final List<String> GENERIC_FLAVOR = List.of("Sorrow", "Silence", "Shadow", "Solitude", "Wonder", "Whisper");
 }

@@ -221,12 +221,19 @@ public final class NaturalRegionDiscovery {
     private static final float COLD_TEMPERATURE_THRESHOLD = 0.2f;
     private static final float HOT_TEMPERATURE_THRESHOLD = 1.0f;
     private static final double PREFIX_CHANCE = 0.75;
+    // Placeholder ratio -- how often the generic flavor pool gets used as a trailing "of <word>"
+    // (e.g. "The Ancient Woods of Sadness"), independent of whether a prefix was also added. Only
+    // sometimes, per the user's explicit intent -- most names shouldn't have this.
+    private static final double FLAVOR_SUFFIX_CHANCE = 0.2;
 
     /**
      * Composes a region name from {@code profile}'s own terrain-noun/thematic-adjective pools plus
-     * the cross-biome size/climate/generic pools in {@code naming.RegionWordPools} -- see {@code
-     * naming.NameComposer#composeDescriptive}. Package-visible for {@code
-     * NaturalRegionDiscoveryTest}.
+     * the cross-biome size/climate pools in {@code naming.RegionWordPools} -- see {@code
+     * naming.NameComposer#composeDescriptive}. {@code RegionWordPools#GENERIC_FLAVOR} is applied
+     * separately, as an occasional trailing "of <word>" rather than a fourth interchangeable
+     * prefix category (2026-09-25 fix -- see decisions.md; it used to be lumped in with the
+     * prefix categories, which read wrong, e.g. "The Sorrow Woods" instead of the intended "The
+     * Ancient Woods of Sorrow"). Package-visible for {@code NaturalRegionDiscoveryTest}.
      */
     static String pickName(NaturalRegionProfile profile, int cellCount, float baseTemperature) {
         List<String> sizePrefixes = cellCount < LARGE_REGION_THRESHOLD ? RegionWordPools.SIZE_SMALL : RegionWordPools.SIZE_LARGE;
@@ -239,10 +246,16 @@ public final class NaturalRegionDiscovery {
             climatePrefixes = List.of();
         }
 
-        return NameComposer.composeDescriptive(
+        String base = NameComposer.composeDescriptive(
                 RANDOM,
                 PREFIX_CHANCE,
-                List.of(sizePrefixes, climatePrefixes, profile.thematicPrefixes(), RegionWordPools.GENERIC_FLAVOR),
+                List.of(sizePrefixes, climatePrefixes, profile.thematicPrefixes()),
                 profile.terrainNouns());
+
+        if (RANDOM.nextDouble() < FLAVOR_SUFFIX_CHANCE) {
+            String flavor = RegionWordPools.GENERIC_FLAVOR.get(RANDOM.nextInt(RegionWordPools.GENERIC_FLAVOR.size()));
+            return base + " of " + flavor;
+        }
+        return base;
     }
 }
