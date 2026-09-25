@@ -57,7 +57,9 @@ public final class SettlementDiscovery {
         Geometry footprint = Geometry.Polygon.convexHull(corners);
 
         Optional<EntityType> nearbyFeature = findNearbyNaturalFeature(level, start);
-        String name = SettlementNaming.pick(nearbyFeature, RANDOM);
+        String name = SettlementNaming.pickName(nearbyFeature, RANDOM);
+        int pieceCount = start.getPieces().size();
+        String designation = SettlementNaming.designationFor(pieceCount);
 
         GeographicEntity created = Cartography.createEntity(level, new EntityDefinition(
                 level.dimension(),
@@ -68,13 +70,17 @@ public final class SettlementDiscovery {
                 footprint,
                 LifecycleState.REALIZED
         ));
+        // Set as a starting point, not baked into EntityDefinition -- a town-management mod is
+        // expected to be the thing that upgrades this over the settlement's lifetime (design
+        // intent, see Cartography#setDesignation and decisions.md, 2026-09-25).
+        Cartography.setDesignation(level, created.id(), designation);
 
         GlobalPos structureReference = new GlobalPos(level.dimension(), start.getChunkPos().getWorldPosition());
         Cartography.associateStructure(level, created.id(), structureReference);
 
         CartographyrMod.LOGGER.info(
-                "Settlement discovery: created new settlement '{}' ({}) from {} piece(s), {} footprint vertice(s)",
-                name, created.id(), start.getPieces().size(),
+                "Settlement discovery: created new {} '{}' ({}) from {} piece(s), {} footprint vertice(s)",
+                designation, name, created.id(), pieceCount,
                 footprint instanceof Geometry.Polygon polygon ? polygon.vertices().size() : "bounds-fallback");
 
         return created;

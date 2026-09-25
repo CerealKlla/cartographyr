@@ -17,6 +17,8 @@ import com.github.cerealklla.cartographyr.geo.GeographicEntity;
 import com.github.cerealklla.cartographyr.geo.Geometry;
 import com.github.cerealklla.cartographyr.geo.Layer;
 import com.github.cerealklla.cartographyr.geo.LifecycleState;
+import com.github.cerealklla.cartographyr.naming.NameComposer;
+import com.github.cerealklla.cartographyr.naming.RegionWordPools;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -82,7 +84,7 @@ public final class NaturalRegionDiscovery {
             return Cartography.updateEntity(level, existing.id(), e -> e.withGeometry(new Geometry.Region(mergedCells)));
         }
 
-        String name = pickName(profile, newCells.size());
+        String name = pickName(profile, newCells.size(), startBiome.value().getBaseTemperature());
         GeographicEntity created = Cartography.createEntity(level, new EntityDefinition(
                 level.dimension(),
                 Classification.NATURAL,
@@ -213,8 +215,34 @@ public final class NaturalRegionDiscovery {
         return Optional.empty();
     }
 
-    private static String pickName(NaturalRegionProfile profile, int cellCount) {
-        List<String> options = cellCount < LARGE_REGION_THRESHOLD ? profile.smallNames() : profile.largeNames();
-        return options.get(RANDOM.nextInt(options.size()));
+    // Placeholder thresholds -- untuned, like every other magnitude in this project. Vanilla biome
+    // temperature roughly spans -0.5 (frozen peaks) to 2.0 (desert/badlands), with ~0.8 being a
+    // "default" temperate value (confirmed against several vanilla biome definitions).
+    private static final float COLD_TEMPERATURE_THRESHOLD = 0.2f;
+    private static final float HOT_TEMPERATURE_THRESHOLD = 1.0f;
+    private static final double PREFIX_CHANCE = 0.75;
+
+    /**
+     * Composes a region name from {@code profile}'s own terrain-noun/thematic-adjective pools plus
+     * the cross-biome size/climate/generic pools in {@code naming.RegionWordPools} -- see {@code
+     * naming.NameComposer#composeDescriptive}. Package-visible for {@code
+     * NaturalRegionDiscoveryTest}.
+     */
+    static String pickName(NaturalRegionProfile profile, int cellCount, float baseTemperature) {
+        List<String> sizePrefixes = cellCount < LARGE_REGION_THRESHOLD ? RegionWordPools.SIZE_SMALL : RegionWordPools.SIZE_LARGE;
+        List<String> climatePrefixes;
+        if (baseTemperature <= COLD_TEMPERATURE_THRESHOLD) {
+            climatePrefixes = RegionWordPools.CLIMATE_COLD;
+        } else if (baseTemperature >= HOT_TEMPERATURE_THRESHOLD) {
+            climatePrefixes = RegionWordPools.CLIMATE_HOT;
+        } else {
+            climatePrefixes = List.of();
+        }
+
+        return NameComposer.composeDescriptive(
+                RANDOM,
+                PREFIX_CHANCE,
+                List.of(sizePrefixes, climatePrefixes, profile.thematicPrefixes(), RegionWordPools.GENERIC_FLAVOR),
+                profile.terrainNouns());
     }
 }

@@ -8,6 +8,7 @@ import java.util.function.UnaryOperator;
 
 import com.github.cerealklla.cartographyr.geo.Amenity;
 import com.github.cerealklla.cartographyr.geo.Characteristic;
+import com.github.cerealklla.cartographyr.geo.Classification;
 import com.github.cerealklla.cartographyr.geo.EntityDefinition;
 import com.github.cerealklla.cartographyr.geo.EntityId;
 import com.github.cerealklla.cartographyr.geo.EntityNames;
@@ -201,6 +202,50 @@ public final class Cartography {
 
     public static Optional<EntityNames> getNames(ServerLevel level, EntityId id) {
         return getNames(level.getServer(), id);
+    }
+
+    /**
+     * Sets an entity's designation (e.g. "Village," "City") -- an open, free-text tier separate
+     * from {@link #setName}, intended for {@link Classification#CONSTRUCTED} entities (not
+     * enforced -- trust-based, same governance as {@link EntityType}/{@link Layer}). A town-
+     * management mod is expected to be the thing calling this to upgrade a settlement over time.
+     */
+    public static Optional<GeographicEntity> setDesignation(MinecraftServer server, EntityId id, String designation) {
+        return data(server).setDesignation(id, designation);
+    }
+
+    public static Optional<GeographicEntity> setDesignation(ServerLevel level, EntityId id, String designation) {
+        return setDesignation(level.getServer(), id, designation);
+    }
+
+    public static Optional<String> getDesignation(MinecraftServer server, EntityId id) {
+        return data(server).getDesignation(id);
+    }
+
+    public static Optional<String> getDesignation(ServerLevel level, EntityId id) {
+        return getDesignation(level.getServer(), id);
+    }
+
+    /**
+     * Sets an entity's special status (e.g. "Capital") -- an open, free-text marker distinct from
+     * {@link #setDesignation}, so different cultures/factions can use their own term while a future
+     * consumer (a minimap, etc.) can still treat "any non-empty value" uniformly as notable without
+     * Cartographyr needing to understand what the string means.
+     */
+    public static Optional<GeographicEntity> setSpecialStatus(MinecraftServer server, EntityId id, String specialStatus) {
+        return data(server).setSpecialStatus(id, specialStatus);
+    }
+
+    public static Optional<GeographicEntity> setSpecialStatus(ServerLevel level, EntityId id, String specialStatus) {
+        return setSpecialStatus(level.getServer(), id, specialStatus);
+    }
+
+    public static Optional<String> getSpecialStatus(MinecraftServer server, EntityId id) {
+        return data(server).getSpecialStatus(id);
+    }
+
+    public static Optional<String> getSpecialStatus(ServerLevel level, EntityId id) {
+        return getSpecialStatus(level.getServer(), id);
     }
 
     /**

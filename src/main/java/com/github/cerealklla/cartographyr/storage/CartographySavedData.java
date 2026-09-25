@@ -209,6 +209,28 @@ public final class CartographySavedData extends SavedData {
         return entity == null ? Optional.empty() : Optional.of(new EntityNames(entity.name(), entity.alternateNames()));
     }
 
+    /** @apiNote Not the intended integration point — use {@code Cartography.setDesignation} instead. */
+    public Optional<GeographicEntity> setDesignation(EntityId id, String designation) {
+        return updateEntity(id, entity -> entity.withDesignation(Optional.of(designation)));
+    }
+
+    /** @apiNote Not the intended integration point — use {@code Cartography.getDesignation} instead. */
+    public Optional<String> getDesignation(EntityId id) {
+        GeographicEntity entity = entities.get(id);
+        return entity == null ? Optional.empty() : entity.designation();
+    }
+
+    /** @apiNote Not the intended integration point — use {@code Cartography.setSpecialStatus} instead. */
+    public Optional<GeographicEntity> setSpecialStatus(EntityId id, String specialStatus) {
+        return updateEntity(id, entity -> entity.withSpecialStatus(Optional.of(specialStatus)));
+    }
+
+    /** @apiNote Not the intended integration point — use {@code Cartography.getSpecialStatus} instead. */
+    public Optional<String> getSpecialStatus(EntityId id) {
+        GeographicEntity entity = entities.get(id);
+        return entity == null ? Optional.empty() : entity.specialStatus();
+    }
+
     /** @apiNote Not the intended integration point — use {@code Cartography.addHistoricalFact} instead. */
     public Optional<GeographicEntity> addHistoricalFact(EntityId id, HistoricalFact fact) {
         return updateEntity(id, entity -> entity.withAddedHistoricalFact(fact));

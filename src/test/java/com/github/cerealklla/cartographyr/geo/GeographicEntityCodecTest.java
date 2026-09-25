@@ -33,7 +33,9 @@ class GeographicEntityCodecTest {
                 Set.of(),
                 Set.of(),
                 List.of(),
-                List.of()
+                List.of(),
+                Optional.empty(),
+                Optional.empty()
         );
 
         GeographicEntity decoded = roundTrip(original);
@@ -57,7 +59,9 @@ class GeographicEntityCodecTest {
                 Set.of(),
                 Set.of(),
                 List.of(),
-                List.of()
+                List.of(),
+                Optional.empty(),
+                Optional.empty()
         );
 
         GeographicEntity decoded = roundTrip(original);
@@ -80,7 +84,9 @@ class GeographicEntityCodecTest {
                 Set.of(),
                 Set.of(),
                 List.of(),
-                List.of()
+                List.of(),
+                Optional.empty(),
+                Optional.empty()
         );
 
         GeographicEntity decoded = roundTrip(original);
@@ -104,7 +110,9 @@ class GeographicEntityCodecTest {
                 Set.of(Characteristic.LUMBER, Characteristic.FARMING),
                 Set.of(),
                 List.of(),
-                List.of()
+                List.of(),
+                Optional.empty(),
+                Optional.empty()
         );
 
         GeographicEntity decoded = roundTrip(original);
@@ -128,7 +136,9 @@ class GeographicEntityCodecTest {
                 Set.of(),
                 Set.of(Amenity.MARKET, Amenity.INN),
                 List.of(),
-                List.of()
+                List.of(),
+                Optional.empty(),
+                Optional.empty()
         );
 
         GeographicEntity decoded = roundTrip(original);
@@ -155,7 +165,9 @@ class GeographicEntityCodecTest {
                         new AlternateName("Old Nonceville", Optional.of("pre-renaming name, per town records")),
                         new AlternateName("The Lumber Camp", Optional.empty())
                 ),
-                List.of()
+                List.of(),
+                Optional.empty(),
+                Optional.empty()
         );
 
         GeographicEntity decoded = roundTrip(original);
@@ -182,7 +194,9 @@ class GeographicEntityCodecTest {
                 List.of(
                         new HistoricalFact("Founded by wandering traders", 0L, Optional.of("town records")),
                         new HistoricalFact("Lumber mill built", 24000L, Optional.empty())
-                )
+                ),
+                Optional.empty(),
+                Optional.empty()
         );
 
         GeographicEntity decoded = roundTrip(original);
