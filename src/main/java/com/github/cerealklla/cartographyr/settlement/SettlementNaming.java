@@ -83,15 +83,17 @@ final class SettlementNaming {
 
     /**
      * A settlement's starting designation tier, by structure piece count -- a natural small-to-
-     * large progression per the user's own ordering. Package-visible for {@code
+     * large progression per the user's own ordering: Hovel &lt; Outpost &lt; Settlement &lt;
+     * Village &lt; Town &lt; City (corrected 2026-09-25 -- an earlier version had Village/Outpost
+     * and Town/Settlement swapped, see decisions.md). Package-visible for {@code
      * SettlementNamingTest}.
      */
     private static final List<DesignationTier> DESIGNATION_TIERS = List.of(
             new DesignationTier(20, "Hovel"),
-            new DesignationTier(40, "Village"),
-            new DesignationTier(70, "Outpost"),
-            new DesignationTier(110, "Town"),
-            new DesignationTier(160, "Settlement")
+            new DesignationTier(40, "Outpost"),
+            new DesignationTier(70, "Settlement"),
+            new DesignationTier(110, "Village"),
+            new DesignationTier(160, "Town")
             // Anything at or above the last threshold falls through to "City" -- see designationFor.
     );
 

@@ -109,16 +109,17 @@ class SettlementNamingTest {
 
     @Test
     void designationForFollowsPieceCountTiers() {
+        // Hovel < Outpost < Settlement < Village < Town < City -- the user's own ordering.
         assertEquals("Hovel", SettlementNaming.designationFor(0));
         assertEquals("Hovel", SettlementNaming.designationFor(19));
-        assertEquals("Village", SettlementNaming.designationFor(20));
-        assertEquals("Village", SettlementNaming.designationFor(39));
-        assertEquals("Outpost", SettlementNaming.designationFor(40));
-        assertEquals("Outpost", SettlementNaming.designationFor(69));
-        assertEquals("Town", SettlementNaming.designationFor(70));
-        assertEquals("Town", SettlementNaming.designationFor(109));
-        assertEquals("Settlement", SettlementNaming.designationFor(110));
-        assertEquals("Settlement", SettlementNaming.designationFor(159));
+        assertEquals("Outpost", SettlementNaming.designationFor(20));
+        assertEquals("Outpost", SettlementNaming.designationFor(39));
+        assertEquals("Settlement", SettlementNaming.designationFor(40));
+        assertEquals("Settlement", SettlementNaming.designationFor(69));
+        assertEquals("Village", SettlementNaming.designationFor(70));
+        assertEquals("Village", SettlementNaming.designationFor(109));
+        assertEquals("Town", SettlementNaming.designationFor(110));
+        assertEquals("Town", SettlementNaming.designationFor(159));
         assertEquals("City", SettlementNaming.designationFor(160));
         assertEquals("City", SettlementNaming.designationFor(1000));
     }

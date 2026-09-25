@@ -9,6 +9,7 @@ import java.util.function.UnaryOperator;
 import com.github.cerealklla.cartographyr.geo.Amenity;
 import com.github.cerealklla.cartographyr.geo.Characteristic;
 import com.github.cerealklla.cartographyr.geo.Classification;
+import com.github.cerealklla.cartographyr.geo.DisplayText;
 import com.github.cerealklla.cartographyr.geo.EntityDefinition;
 import com.github.cerealklla.cartographyr.geo.EntityId;
 import com.github.cerealklla.cartographyr.geo.EntityNames;
@@ -246,6 +247,21 @@ public final class Cartography {
 
     public static Optional<String> getSpecialStatus(ServerLevel level, EntityId id) {
         return getSpecialStatus(level.getServer(), id);
+    }
+
+    /**
+     * The entity's canonical human-facing display text (design doc Section 5.3) -- composes
+     * {@code name}/{@code designation}/{@code lifecycleState} via {@link DisplayText#forEntity}.
+     * The single formatting every mod should use so two mods never disagree about what text
+     * represents the same place. Prefer this (or {@link DisplayText#forEntity} directly, if the
+     * caller already has the {@link GeographicEntity} in hand) over composing the string yourself.
+     */
+    public static Optional<String> getDisplayText(MinecraftServer server, EntityId id) {
+        return getEntity(server, id).map(DisplayText::forEntity);
+    }
+
+    public static Optional<String> getDisplayText(ServerLevel level, EntityId id) {
+        return getDisplayText(level.getServer(), id);
     }
 
     /**
