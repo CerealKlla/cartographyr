@@ -18,10 +18,11 @@ import net.minecraft.world.level.biome.Biomes;
  * .settlement.SettlementDiscovery} can reuse the same biome-matching logic for contextual
  * settlement naming, rather than duplicating a second copy of the biome-family mapping.
  *
- * <p>Covers the common overworld surface land biome families, matching the design document's
- * "discovered incrementally... not exhaustively" instruction (Section 5.8) — deliberately still
- * not everything: oceans, beaches, mushroom fields, cherry groves, ice spikes, and cave/Nether/End
- * biomes have no profile. Adding one for another biome family is a small, self-contained addition.
+ * <p>Covers the common overworld surface land biome families plus oceans/beaches/the Nether
+ * (added 2026-09-25, see decisions.md), matching the design document's "discovered
+ * incrementally... not exhaustively" instruction (Section 5.8) — deliberately still not
+ * everything: mushroom fields, cherry groves, ice spikes, and cave/End biomes have no profile.
+ * Adding one for another biome family is a small, self-contained addition.
  */
 public record NaturalRegionProfile(EntityType type, Set<ResourceKey<Biome>> biomes, List<String> smallNames, List<String> largeNames) {
 
@@ -90,6 +91,31 @@ public record NaturalRegionProfile(EntityType type, Set<ResourceKey<Biome>> biom
                     Set.of(Biomes.RIVER, Biomes.FROZEN_RIVER),
                     List.of("The Quiet Stream", "Brookside", "The Narrow Waters", "Clearwater Bend"),
                     List.of("The Winding River", "The Silverflow", "The Long Waterway", "The Wandering River")
+            ),
+            new NaturalRegionProfile(
+                    EntityType.OCEAN,
+                    Set.of(Biomes.OCEAN, Biomes.DEEP_OCEAN, Biomes.WARM_OCEAN, Biomes.LUKEWARM_OCEAN,
+                            Biomes.DEEP_LUKEWARM_OCEAN, Biomes.COLD_OCEAN, Biomes.DEEP_COLD_OCEAN,
+                            Biomes.FROZEN_OCEAN, Biomes.DEEP_FROZEN_OCEAN),
+                    List.of("The Shallow Bay", "Tidewater Cove", "The Calm Shoals", "Saltmist Reach"),
+                    List.of("The Deep Blue", "The Boundless Sea", "The Drowned Expanse", "The Endless Tide")
+            ),
+            new NaturalRegionProfile(
+                    EntityType.BEACH,
+                    Set.of(Biomes.BEACH, Biomes.SNOWY_BEACH),
+                    List.of("The Sandy Spit", "Driftwood Shore", "The Quiet Strand", "Tidewrack Flat"),
+                    List.of("The Sunbleached Coast", "The Long Shore", "The Windswept Strand", "The Silver Sands")
+            ),
+            // Deliberately one shared type/name-pool for every Nether biome rather than five
+            // separate themed ones -- explicitly requested by the user rather than hand-authoring
+            // a themed pool per sub-biome (nether_wastes/soul_sand_valley/crimson_forest/
+            // warped_forest/basalt_deltas), see decisions.md, 2026-09-25.
+            new NaturalRegionProfile(
+                    EntityType.NETHER_WASTELAND,
+                    Set.of(Biomes.NETHER_WASTES, Biomes.SOUL_SAND_VALLEY, Biomes.CRIMSON_FOREST,
+                            Biomes.WARPED_FOREST, Biomes.BASALT_DELTAS),
+                    List.of("The Scorched Hollow", "Ashfall Reach", "The Smoldering Waste", "Cinderflat"),
+                    List.of("The Burning Wastes", "The Infernal Expanse", "The Charred Reaches", "The Endless Blaze")
             )
     );
 

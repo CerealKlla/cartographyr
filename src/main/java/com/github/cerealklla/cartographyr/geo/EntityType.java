@@ -30,13 +30,15 @@ import net.minecraft.resources.Identifier;
  * SETTLEMENT with {@link LifecycleState#ABANDONED} or {@link LifecycleState#DESTROYED}, not a
  * different type.
  *
- * <p>DESERT/FOREST/PLAINS/SWAMP/TAIGA/JUNGLE/SAVANNA/BADLANDS (added for Natural Geography,
- * Section 5.8) are a different case from the VILLAGE/TOWN/CITY removal above: they're intrinsic,
- * physically-observable terrain properties (biome-driven, stable over time), not a
- * socially-constructed tier — structurally the same kind of value as MOUNTAIN/RIVER, which were
- * never in question. Deliberately still not exhaustive: oceans, beaches, mushroom fields, cherry
- * groves, ice spikes, and cave/Nether/End biomes have no profile yet — see {@code
- * NaturalRegionProfile} and design doc Section 5.8's "incremental, not exhaustive" guidance.
+ * <p>DESERT/FOREST/PLAINS/SWAMP/TAIGA/JUNGLE/SAVANNA/BADLANDS/OCEAN/BEACH/NETHER_WASTELAND
+ * (Natural Geography, Section 5.8) are a different case from the VILLAGE/TOWN/CITY removal above:
+ * they're intrinsic, physically-observable terrain properties (biome-driven, stable over time),
+ * not a socially-constructed tier — structurally the same kind of value as MOUNTAIN/RIVER, which
+ * were never in question. Deliberately still not exhaustive: mushroom fields, cherry groves, ice
+ * spikes, and cave/End biomes have no profile yet — see {@code NaturalRegionProfile} and design
+ * doc Section 5.8's "incremental, not exhaustive" guidance. NETHER_WASTELAND (added 2026-09-25)
+ * deliberately covers every Nether biome under one type/name-pool rather than five separate
+ * themed ones — see decisions.md.
  */
 public record EntityType(Identifier id) {
 
@@ -53,6 +55,9 @@ public record EntityType(Identifier id) {
     public static final EntityType JUNGLE = builtin("jungle");
     public static final EntityType SAVANNA = builtin("savanna");
     public static final EntityType BADLANDS = builtin("badlands");
+    public static final EntityType OCEAN = builtin("ocean");
+    public static final EntityType BEACH = builtin("beach");
+    public static final EntityType NETHER_WASTELAND = builtin("nether_wasteland");
     public static final EntityType SETTLEMENT = builtin("settlement");
     public static final EntityType MINE = builtin("mine");
     public static final EntityType ROAD = builtin("road");
