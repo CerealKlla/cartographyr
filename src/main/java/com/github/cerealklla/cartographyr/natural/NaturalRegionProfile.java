@@ -25,10 +25,11 @@ import net.minecraft.world.level.biome.Biomes;
  *
  * <p>Covers the common overworld surface land biome families plus oceans/beaches/the Nether,
  * matching the design document's "discovered incrementally... not exhaustively" instruction
- * (Section 5.8) — deliberately still not everything: only End biomes have no profile as of
- * 2026-09-25 (cherry groves, cave biomes, mushroom fields, and ice spikes were all closed the same
- * day — see decisions.md — after real playtest reports of specific spots generating no location
- * name at all). Adding one for another biome family is a small, self-contained addition.
+ * (Section 5.8) — deliberately still not everything: only End biomes (and the void) have no
+ * profile as of 2026-09-26, after a full audit against the vanilla {@code Biomes} constant list
+ * confirmed every other vanilla biome (including snowy plains, pale gardens, and stony shores,
+ * closed off that day) is covered. Adding one for another biome family is a small, self-contained
+ * addition.
  */
 public record NaturalRegionProfile(EntityType type, Set<ResourceKey<Biome>> biomes, List<String> terrainNouns, List<String> thematicPrefixes) {
 
@@ -42,13 +43,13 @@ public record NaturalRegionProfile(EntityType type, Set<ResourceKey<Biome>> biom
             new NaturalRegionProfile(
                     EntityType.FOREST,
                     Set.of(Biomes.FOREST, Biomes.DARK_FOREST, Biomes.BIRCH_FOREST, Biomes.FLOWER_FOREST,
-                            Biomes.OLD_GROWTH_BIRCH_FOREST, Biomes.CHERRY_GROVE),
+                            Biomes.OLD_GROWTH_BIRCH_FOREST, Biomes.CHERRY_GROVE, Biomes.PALE_GARDEN),
                     List.of("Grove", "Thicket", "Copse", "Hollow", "Woods", "Boughs"),
                     List.of("Whispering", "Mossy", "Quiet", "Forbidden", "Shadowed", "Ancient", "Blossoming")
             ),
             new NaturalRegionProfile(
                     EntityType.PLAINS,
-                    Set.of(Biomes.PLAINS, Biomes.SUNFLOWER_PLAINS),
+                    Set.of(Biomes.PLAINS, Biomes.SUNFLOWER_PLAINS, Biomes.SNOWY_PLAINS),
                     List.of("Field", "Pasture", "Flat", "Stretch", "Grasslands"),
                     List.of("Open", "Green", "Windrow", "Sunlit", "Golden")
             ),
@@ -109,7 +110,7 @@ public record NaturalRegionProfile(EntityType type, Set<ResourceKey<Biome>> biom
             ),
             new NaturalRegionProfile(
                     EntityType.BEACH,
-                    Set.of(Biomes.BEACH, Biomes.SNOWY_BEACH),
+                    Set.of(Biomes.BEACH, Biomes.SNOWY_BEACH, Biomes.STONY_SHORE),
                     List.of("Spit", "Shore", "Strand", "Flat", "Coast"),
                     List.of("Sandy", "Driftwood", "Quiet", "Tidewrack", "Sunbleached")
             ),
