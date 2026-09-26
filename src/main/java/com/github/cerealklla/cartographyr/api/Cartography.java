@@ -303,6 +303,15 @@ public final class Cartography {
         return findNaturalRegions(level.getServer(), level.dimension(), type);
     }
 
+    /** Every entity in {@code dimension} matching {@code classification} -- e.g. all settlements. */
+    public static Set<GeographicEntity> findEntities(MinecraftServer server, ResourceKey<Level> dimension, Classification classification) {
+        return data(server).findEntities(dimension, classification);
+    }
+
+    public static Set<GeographicEntity> findEntities(ServerLevel level, Classification classification) {
+        return findEntities(level.getServer(), level.dimension(), classification);
+    }
+
     public static Optional<Geometry> getRegionBounds(MinecraftServer server, EntityId id) {
         return data(server).getRegionBounds(id);
     }

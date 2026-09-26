@@ -268,6 +268,21 @@ public final class CartographySavedData extends SavedData {
     }
 
     /**
+     * @apiNote Not the intended integration point — use {@code Cartography.findEntities} instead.
+     * Same O(n) scan as {@link #findNaturalRegions}, but by classification alone (no type filter) --
+     * e.g. every settlement in a dimension, regardless of natural/constructed type.
+     */
+    public Set<GeographicEntity> findEntities(ResourceKey<Level> dimension, Classification classification) {
+        Set<GeographicEntity> result = new HashSet<>();
+        for (GeographicEntity entity : entities.values()) {
+            if (entity.classification().equals(classification) && entity.dimension().equals(dimension)) {
+                result.add(entity);
+            }
+        }
+        return result;
+    }
+
+    /**
      * @apiNote Not the intended integration point — use {@code Cartography.getRegionBounds} instead.
      * Generic over any entity, not just natural ones — the underlying operation doesn't need the
      * restriction the design doc's wording implies.

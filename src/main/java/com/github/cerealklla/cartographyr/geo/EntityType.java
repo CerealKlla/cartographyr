@@ -30,15 +30,19 @@ import net.minecraft.resources.Identifier;
  * SETTLEMENT with {@link LifecycleState#ABANDONED} or {@link LifecycleState#DESTROYED}, not a
  * different type.
  *
- * <p>DESERT/FOREST/PLAINS/SWAMP/TAIGA/JUNGLE/SAVANNA/BADLANDS/OCEAN/BEACH/NETHER_WASTELAND
+ * <p>DESERT/FOREST/PLAINS/SWAMP/TAIGA/JUNGLE/SAVANNA/BADLANDS/OCEAN/BEACH/NETHER_WASTELAND/CAVE
  * (Natural Geography, Section 5.8) are a different case from the VILLAGE/TOWN/CITY removal above:
  * they're intrinsic, physically-observable terrain properties (biome-driven, stable over time),
  * not a socially-constructed tier — structurally the same kind of value as MOUNTAIN/RIVER, which
- * were never in question. Deliberately still not exhaustive: mushroom fields, cherry groves, ice
- * spikes, and cave/End biomes have no profile yet — see {@code NaturalRegionProfile} and design
- * doc Section 5.8's "incremental, not exhaustive" guidance. NETHER_WASTELAND (added 2026-09-25)
- * deliberately covers every Nether biome under one type/name-pool rather than five separate
- * themed ones — see decisions.md.
+ * were never in question. Deliberately still not exhaustive: mushroom fields, ice spikes, and End
+ * biomes have no profile yet — see {@code NaturalRegionProfile} and design doc Section 5.8's
+ * "incremental, not exhaustive" guidance. NETHER_WASTELAND (added 2026-09-25) deliberately covers
+ * every Nether biome under one type/name-pool rather than five separate themed ones — see
+ * decisions.md. CAVE (added 2026-09-25, same reasoning) similarly covers every cave biome
+ * (dripstone caves/lush caves/deep dark) under one type — biome sampling sees a player's actual 3D
+ * position, not a surface heightmap, so an underground base was previously always unclassifiable.
+ * MUSHROOM_FIELDS and ICE_SPIKES (added 2026-09-25) close the last two overworld gaps flagged
+ * since Natural Geography's original "incremental, not exhaustive" note.
  */
 public record EntityType(Identifier id) {
 
@@ -46,6 +50,7 @@ public record EntityType(Identifier id) {
 
     public static final EntityType REGION = builtin("region");
     public static final EntityType MOUNTAIN = builtin("mountain");
+    public static final EntityType CAVE = builtin("cave");
     public static final EntityType RIVER = builtin("river");
     public static final EntityType DESERT = builtin("desert");
     public static final EntityType FOREST = builtin("forest");
@@ -58,6 +63,8 @@ public record EntityType(Identifier id) {
     public static final EntityType OCEAN = builtin("ocean");
     public static final EntityType BEACH = builtin("beach");
     public static final EntityType NETHER_WASTELAND = builtin("nether_wasteland");
+    public static final EntityType MUSHROOM_FIELDS = builtin("mushroom_fields");
+    public static final EntityType ICE_SPIKES = builtin("ice_spikes");
     public static final EntityType SETTLEMENT = builtin("settlement");
     public static final EntityType MINE = builtin("mine");
     public static final EntityType ROAD = builtin("road");

@@ -25,9 +25,10 @@ import net.minecraft.world.level.biome.Biomes;
  *
  * <p>Covers the common overworld surface land biome families plus oceans/beaches/the Nether,
  * matching the design document's "discovered incrementally... not exhaustively" instruction
- * (Section 5.8) — deliberately still not everything: mushroom fields, cherry groves, ice spikes,
- * and cave/End biomes have no profile. Adding one for another biome family is a small,
- * self-contained addition.
+ * (Section 5.8) — deliberately still not everything: only End biomes have no profile as of
+ * 2026-09-25 (cherry groves, cave biomes, mushroom fields, and ice spikes were all closed the same
+ * day — see decisions.md — after real playtest reports of specific spots generating no location
+ * name at all). Adding one for another biome family is a small, self-contained addition.
  */
 public record NaturalRegionProfile(EntityType type, Set<ResourceKey<Biome>> biomes, List<String> terrainNouns, List<String> thematicPrefixes) {
 
@@ -40,9 +41,10 @@ public record NaturalRegionProfile(EntityType type, Set<ResourceKey<Biome>> biom
             ),
             new NaturalRegionProfile(
                     EntityType.FOREST,
-                    Set.of(Biomes.FOREST, Biomes.DARK_FOREST, Biomes.BIRCH_FOREST, Biomes.FLOWER_FOREST, Biomes.OLD_GROWTH_BIRCH_FOREST),
+                    Set.of(Biomes.FOREST, Biomes.DARK_FOREST, Biomes.BIRCH_FOREST, Biomes.FLOWER_FOREST,
+                            Biomes.OLD_GROWTH_BIRCH_FOREST, Biomes.CHERRY_GROVE),
                     List.of("Grove", "Thicket", "Copse", "Hollow", "Woods", "Boughs"),
-                    List.of("Whispering", "Mossy", "Quiet", "Forbidden", "Shadowed", "Ancient")
+                    List.of("Whispering", "Mossy", "Quiet", "Forbidden", "Shadowed", "Ancient", "Blossoming")
             ),
             new NaturalRegionProfile(
                     EntityType.PLAINS,
@@ -121,6 +123,33 @@ public record NaturalRegionProfile(EntityType type, Set<ResourceKey<Biome>> biom
                             Biomes.WARPED_FOREST, Biomes.BASALT_DELTAS),
                     List.of("Hollow", "Reach", "Waste", "Expanse", "Blaze"),
                     List.of("Scorched", "Ashfall", "Smoldering", "Cinderbound", "Infernal")
+            ),
+            // Added 2026-09-25 (see decisions.md) -- a real playtest report: an established
+            // underground base is a very common place for a player to actually be, and biome
+            // sampling (NaturalRegionDiscovery#discover) uses the player's real 3D position, not a
+            // surface heightmap sample, so standing in one of these previously always came back
+            // completely unclassified. One shared type/pool for all three cave biomes, same
+            // "don't hand-author five near-identical pools" reasoning as NETHER_WASTELAND.
+            new NaturalRegionProfile(
+                    EntityType.CAVE,
+                    Set.of(Biomes.DRIPSTONE_CAVES, Biomes.LUSH_CAVES, Biomes.DEEP_DARK),
+                    List.of("Hollow", "Depths", "Cavern", "Grotto", "Underreach"),
+                    List.of("Sunless", "Echoing", "Dripping", "Buried", "Lightless")
+            ),
+            // Added 2026-09-25 (see decisions.md) -- the last two overworld biomes flagged as
+            // uncovered since this class's original doc, closed off after a playtest report of
+            // several places generating no location name at all.
+            new NaturalRegionProfile(
+                    EntityType.MUSHROOM_FIELDS,
+                    Set.of(Biomes.MUSHROOM_FIELDS),
+                    List.of("Isle", "Mycelium", "Growth", "Spore Flat", "Thicket"),
+                    List.of("Spongy", "Towering", "Fungal", "Mottled", "Otherworldly")
+            ),
+            new NaturalRegionProfile(
+                    EntityType.ICE_SPIKES,
+                    Set.of(Biomes.ICE_SPIKES),
+                    List.of("Spikes", "Reach", "Flat", "Expanse", "Shard"),
+                    List.of("Frozen", "Glacial", "Glittering", "Jagged", "Frostbitten")
             )
     );
 

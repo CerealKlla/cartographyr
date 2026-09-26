@@ -25,8 +25,24 @@ public final class DisplayText {
     }
 
     public static String forEntity(GeographicEntity entity) {
+        return compose(entity, true);
+    }
+
+    /**
+     * Same composition as {@link #forEntity}, minus the {@code designation} ("Village of"/"City
+     * of"/etc.) -- just {@code "[<ruin prefix> ]<name>"}. Added 2026-09-25 (see decisions.md) for
+     * the sign-writing mechanic specifically: a vanilla sign's line is only ~15 characters wide, and
+     * the full designation-prefixed form routinely ran off it.
+     */
+    public static String shortForEntity(GeographicEntity entity) {
+        return compose(entity, false);
+    }
+
+    private static String compose(GeographicEntity entity, boolean includeDesignation) {
         String name = entity.name().orElse("an unnamed place");
-        String base = entity.designation().map(designation -> designation + " of " + name).orElse(name);
+        String base = includeDesignation
+                ? entity.designation().map(designation -> designation + " of " + name).orElse(name)
+                : name;
 
         if (!isRuined(entity.lifecycleState())) {
             return base;
