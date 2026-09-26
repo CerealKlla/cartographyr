@@ -23,13 +23,11 @@ import net.minecraft.world.level.biome.Biomes;
  * .settlement.SettlementDiscovery} can reuse the same biome-matching logic for contextual
  * settlement naming, rather than duplicating a second copy of the biome-family mapping.
  *
- * <p>Covers the common overworld surface land biome families plus oceans/beaches/the Nether,
- * matching the design document's "discovered incrementally... not exhaustively" instruction
- * (Section 5.8) — deliberately still not everything: only End biomes (and the void) have no
- * profile as of 2026-09-26, after a full audit against the vanilla {@code Biomes} constant list
- * confirmed every other vanilla biome (including snowy plains, pale gardens, and stony shores,
- * closed off that day) is covered. Adding one for another biome family is a small, self-contained
- * addition.
+ * <p>Covers the common overworld surface land biome families plus oceans/beaches/the Nether/the
+ * End, matching the design document's "discovered incrementally... not exhaustively" instruction
+ * (Section 5.8) — as of 2026-09-26, after a full audit against the vanilla {@code Biomes}
+ * constant list, only {@code Biomes.THE_VOID} has no profile (not a real biome). Adding one for
+ * another biome family is a small, self-contained addition.
  */
 public record NaturalRegionProfile(EntityType type, Set<ResourceKey<Biome>> biomes, List<String> terrainNouns, List<String> thematicPrefixes) {
 
@@ -117,13 +115,15 @@ public record NaturalRegionProfile(EntityType type, Set<ResourceKey<Biome>> biom
             // Deliberately one shared type/word-pool for every Nether biome rather than five
             // separate themed ones -- explicitly requested by the user rather than hand-authoring
             // a themed pool per sub-biome (nether_wastes/soul_sand_valley/crimson_forest/
-            // warped_forest/basalt_deltas), see decisions.md, 2026-09-25.
+            // warped_forest/basalt_deltas), see decisions.md, 2026-09-25. Re-themed explicitly
+            // Demonic/Hell (2026-09-26, see decisions.md) rather than the prior more generic
+            // "scorched wasteland" flavor.
             new NaturalRegionProfile(
                     EntityType.NETHER_WASTELAND,
                     Set.of(Biomes.NETHER_WASTES, Biomes.SOUL_SAND_VALLEY, Biomes.CRIMSON_FOREST,
                             Biomes.WARPED_FOREST, Biomes.BASALT_DELTAS),
-                    List.of("Hollow", "Reach", "Waste", "Expanse", "Blaze"),
-                    List.of("Scorched", "Ashfall", "Smoldering", "Cinderbound", "Infernal")
+                    List.of("Pit", "Abyss", "Brimstone", "Underworld", "Damnation"),
+                    List.of("Infernal", "Demonic", "Hellforged", "Cursed", "Blackened", "Unholy")
             ),
             // Added 2026-09-25 (see decisions.md) -- a real playtest report: an established
             // underground base is a very common place for a player to actually be, and biome
@@ -151,6 +151,19 @@ public record NaturalRegionProfile(EntityType type, Set<ResourceKey<Biome>> biom
                     Set.of(Biomes.ICE_SPIKES),
                     List.of("Spikes", "Reach", "Flat", "Expanse", "Shard"),
                     List.of("Frozen", "Glacial", "Glittering", "Jagged", "Frostbitten")
+            ),
+            // Added 2026-09-26 (see decisions.md), after a full audit against vanilla's Biomes
+            // constant list -- the last uncovered biome family besides the void itself. One shared
+            // type/word-pool for all five End biomes (the_end/small_end_islands/end_midlands/
+            // end_highlands/end_barrens), same "one type per dimension" shape as
+            // NETHER_WASTELAND -- themed Celestial rather than another wasteland flavor, per
+            // explicit user instruction.
+            new NaturalRegionProfile(
+                    EntityType.THE_END,
+                    Set.of(Biomes.THE_END, Biomes.SMALL_END_ISLANDS, Biomes.END_MIDLANDS,
+                            Biomes.END_HIGHLANDS, Biomes.END_BARRENS),
+                    List.of("Expanse", "Void", "Reach", "Firmament", "Isles", "Horizon"),
+                    List.of("Celestial", "Starlit", "Astral", "Ethereal", "Radiant", "Boundless")
             )
     );
 

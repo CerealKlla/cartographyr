@@ -42,7 +42,11 @@ import net.minecraft.resources.Identifier;
  * (dripstone caves/lush caves/deep dark) under one type — biome sampling sees a player's actual 3D
  * position, not a surface heightmap, so an underground base was previously always unclassifiable.
  * MUSHROOM_FIELDS and ICE_SPIKES (added 2026-09-25) close the last two overworld gaps flagged
- * since Natural Geography's original "incremental, not exhaustive" note.
+ * since Natural Geography's original "incremental, not exhaustive" note. THE_END (added
+ * 2026-09-26, after a full biome-coverage audit against vanilla's {@code Biomes} constant list)
+ * covers all five End-dimension biomes under one type/name-pool, same "one shared type per
+ * dimension" shape as NETHER_WASTELAND — themed Celestial rather than Demonic/Hell, per explicit
+ * user instruction.
  */
 public record EntityType(Identifier id) {
 
@@ -63,6 +67,7 @@ public record EntityType(Identifier id) {
     public static final EntityType OCEAN = builtin("ocean");
     public static final EntityType BEACH = builtin("beach");
     public static final EntityType NETHER_WASTELAND = builtin("nether_wasteland");
+    public static final EntityType THE_END = builtin("the_end");
     public static final EntityType MUSHROOM_FIELDS = builtin("mushroom_fields");
     public static final EntityType ICE_SPIKES = builtin("ice_spikes");
     public static final EntityType SETTLEMENT = builtin("settlement");
