@@ -19,6 +19,9 @@ import com.github.cerealklla.cartographyr.geo.Geometry;
 import com.github.cerealklla.cartographyr.geo.HistoricalFact;
 import com.github.cerealklla.cartographyr.geo.Layer;
 import com.github.cerealklla.cartographyr.geo.LayerRegistry;
+import com.github.cerealklla.cartographyr.geo.ProtectionDefaults;
+import com.github.cerealklla.cartographyr.geo.ProtectionLevel;
+import com.github.cerealklla.cartographyr.geo.ProtectionLevelRegistry;
 import com.github.cerealklla.cartographyr.natural.NaturalRegionDiscovery;
 import com.github.cerealklla.cartographyr.storage.CartographySavedData;
 
@@ -355,5 +358,48 @@ public final class Cartography {
 
     public static Collection<Layer> getRegisteredLayers() {
         return LayerRegistry.all();
+    }
+
+    // Protection level (design doc addendum, 2026-09-26) -- see ProtectionLevel's own Javadoc:
+    // purely informational, never enforced by Cartographyr itself.
+
+    /** Registers a {@link ProtectionLevel} so it shows up in {@link #getRegisteredProtectionLevels}. */
+    public static void registerProtectionLevel(ProtectionLevel level) {
+        ProtectionLevelRegistry.register(level);
+    }
+
+    public static Collection<ProtectionLevel> getRegisteredProtectionLevels() {
+        return ProtectionLevelRegistry.all();
+    }
+
+    /**
+     * Configures the {@link ProtectionLevel} newly created entities under {@code layerId} get by
+     * default, unless their own {@link EntityDefinition#protectionLevel()} says otherwise. See
+     * {@link ProtectionDefaults}'s own Javadoc for why this is per-layer rather than per-{@link
+     * Classification}/{@link EntityType}.
+     */
+    public static void setDefaultProtectionLevel(Identifier layerId, ProtectionLevel level) {
+        ProtectionDefaults.set(layerId, level);
+    }
+
+    public static Optional<ProtectionLevel> getDefaultProtectionLevel(Identifier layerId) {
+        return ProtectionDefaults.get(layerId);
+    }
+
+    /** Changes an existing entity's {@link ProtectionLevel} (design doc addendum, 2026-09-26). */
+    public static Optional<GeographicEntity> setProtectionLevel(MinecraftServer server, EntityId id, ProtectionLevel level) {
+        return data(server).setProtectionLevel(id, level);
+    }
+
+    public static Optional<GeographicEntity> setProtectionLevel(ServerLevel level, EntityId id, ProtectionLevel protectionLevel) {
+        return setProtectionLevel(level.getServer(), id, protectionLevel);
+    }
+
+    public static Optional<ProtectionLevel> getProtectionLevel(MinecraftServer server, EntityId id) {
+        return data(server).getProtectionLevel(id);
+    }
+
+    public static Optional<ProtectionLevel> getProtectionLevel(ServerLevel level, EntityId id) {
+        return getProtectionLevel(level.getServer(), id);
     }
 }

@@ -24,6 +24,8 @@ import com.github.cerealklla.cartographyr.geo.GeographicEntity;
 import com.github.cerealklla.cartographyr.geo.HistoricalFact;
 import com.github.cerealklla.cartographyr.geo.Layer;
 import com.github.cerealklla.cartographyr.geo.LifecycleState;
+import com.github.cerealklla.cartographyr.geo.ProtectionDefaults;
+import com.github.cerealklla.cartographyr.geo.ProtectionLevel;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
@@ -53,7 +55,7 @@ class CartographySavedDataTest {
                 Layer.LOCATION_ID,
                 Optional.of("Capital City of Nonce"),
                 new Geometry.Point(0, 0),
-                LifecycleState.PLANNED
+                LifecycleState.PLANNED, Optional.empty()
         ));
 
         CartographySavedData reloaded = simulateReload(original);
@@ -78,7 +80,7 @@ class CartographySavedDataTest {
                 Layer.LOCATION_ID,
                 Optional.of("Capital City of Nonce"),
                 new Geometry.Point(0, 0),
-                LifecycleState.PLANNED
+                LifecycleState.PLANNED, Optional.empty()
         ));
 
         GlobalPos structure = GlobalPos.of(Level.OVERWORLD, new BlockPos(0, 64, 0));
@@ -105,11 +107,11 @@ class CartographySavedDataTest {
 
         GeographicEntity first = data.createEntity(new EntityDefinition(
                 Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, Layer.LOCATION_ID,
-                Optional.empty(), new Geometry.Point(0, 0), LifecycleState.PLANNED
+                Optional.empty(), new Geometry.Point(0, 0), LifecycleState.PLANNED, Optional.empty()
         ));
         GeographicEntity second = data.createEntity(new EntityDefinition(
                 Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, Layer.LOCATION_ID,
-                Optional.empty(), new Geometry.Point(100, 100), LifecycleState.PLANNED
+                Optional.empty(), new Geometry.Point(100, 100), LifecycleState.PLANNED, Optional.empty()
         ));
 
         assertTrue(data.associateStructure(first.id(), structure).isPresent());
@@ -128,7 +130,7 @@ class CartographySavedDataTest {
 
         GeographicEntity created = data.createEntity(new EntityDefinition(
                 Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, Layer.LOCATION_ID,
-                Optional.of("Nonceville"), new Geometry.Point(0, 0), LifecycleState.REALIZED
+                Optional.of("Nonceville"), new Geometry.Point(0, 0), LifecycleState.REALIZED, Optional.empty()
         ));
 
         assertEquals(Set.of(), data.getCharacteristics(created.id()));
@@ -153,7 +155,7 @@ class CartographySavedDataTest {
 
         GeographicEntity created = data.createEntity(new EntityDefinition(
                 Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, Layer.LOCATION_ID,
-                Optional.of("Nonceville"), new Geometry.Point(0, 0), LifecycleState.REALIZED
+                Optional.of("Nonceville"), new Geometry.Point(0, 0), LifecycleState.REALIZED, Optional.empty()
         ));
 
         assertEquals(Set.of(), data.getAmenities(created.id()));
@@ -178,7 +180,7 @@ class CartographySavedDataTest {
 
         GeographicEntity created = data.createEntity(new EntityDefinition(
                 Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, Layer.LOCATION_ID,
-                Optional.empty(), new Geometry.Point(0, 0), LifecycleState.REALIZED
+                Optional.empty(), new Geometry.Point(0, 0), LifecycleState.REALIZED, Optional.empty()
         ));
 
         Optional<EntityNames> beforeNaming = data.getNames(created.id());
@@ -219,7 +221,7 @@ class CartographySavedDataTest {
 
         GeographicEntity created = data.createEntity(new EntityDefinition(
                 Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, Layer.LOCATION_ID,
-                Optional.of("Nonceville"), new Geometry.Point(0, 0), LifecycleState.REALIZED
+                Optional.of("Nonceville"), new Geometry.Point(0, 0), LifecycleState.REALIZED, Optional.empty()
         ));
 
         assertEquals(List.of(), data.getHistoricalFacts(created.id()));
@@ -255,12 +257,12 @@ class CartographySavedDataTest {
         Geometry.Region desertShape = new Geometry.Region(Set.of(ChunkPos.pack(0, 0), ChunkPos.pack(1, 0)));
         GeographicEntity desert = data.createEntity(new EntityDefinition(
                 Level.OVERWORLD, Classification.NATURAL, EntityType.DESERT, Layer.LOCATION_ID,
-                Optional.of("The Forsaken Sands"), desertShape, LifecycleState.REALIZED
+                Optional.of("The Forsaken Sands"), desertShape, LifecycleState.REALIZED, Optional.empty()
         ));
 
         GeographicEntity settlement = data.createEntity(new EntityDefinition(
                 Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, Layer.LOCATION_ID,
-                Optional.of("Nonceville"), new Geometry.Point(500, 500), LifecycleState.REALIZED
+                Optional.of("Nonceville"), new Geometry.Point(500, 500), LifecycleState.REALIZED, Optional.empty()
         ));
 
         // A point inside the desert's first cell (chunk 0,0 covers blocks 0..15)
@@ -295,7 +297,7 @@ class CartographySavedDataTest {
         CartographySavedData data = new CartographySavedData();
         GeographicEntity territory = data.createEntity(new EntityDefinition(
                 Level.OVERWORLD, claimed, factionTerritory, Layer.LOCATION_ID,
-                Optional.of("Redguard Claim"), new Geometry.Point(10, 10), LifecycleState.REALIZED
+                Optional.of("Redguard Claim"), new Geometry.Point(10, 10), LifecycleState.REALIZED, Optional.empty()
         ));
 
         CartographySavedData reloaded = simulateReload(data);
@@ -312,6 +314,55 @@ class CartographySavedDataTest {
         // classification correctly finds nothing here -- confirms .equals() (not identity) is doing
         // the real filtering work end to end, including through a third-party classification value.
         assertEquals(Set.of(), data.findNaturalRegions(Level.OVERWORLD, factionTerritory));
+    }
+
+    @Test
+    void protectionLevelDefaultsToUnprotectedWithNoLayerDefaultConfigured() {
+        CartographySavedData data = new CartographySavedData();
+        Identifier unconfiguredLayer = Identifier.fromNamespaceAndPath("testmod", "unconfigured");
+
+        GeographicEntity created = data.createEntity(new EntityDefinition(
+                Level.OVERWORLD, Classification.NATURAL, EntityType.DESERT, unconfiguredLayer,
+                Optional.empty(), new Geometry.Point(0, 0), LifecycleState.REALIZED, Optional.empty()
+        ));
+
+        assertEquals(ProtectionLevel.UNPROTECTED, created.protectionLevel());
+    }
+
+    @Test
+    void protectionLevelFallsBackToLayerDefaultThenExplicitValueWins() {
+        CartographySavedData data = new CartographySavedData();
+        Identifier churchLayer = Identifier.fromNamespaceAndPath("religyons", "church");
+        ProtectionLevel consecratedGround = new ProtectionLevel(Identifier.fromNamespaceAndPath("religyons", "consecrated_ground"));
+        ProtectionDefaults.set(churchLayer, consecratedGround);
+
+        GeographicEntity usesLayerDefault = data.createEntity(new EntityDefinition(
+                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, churchLayer,
+                Optional.empty(), new Geometry.Point(0, 0), LifecycleState.REALIZED, Optional.empty()
+        ));
+        assertEquals(consecratedGround, usesLayerDefault.protectionLevel());
+
+        GeographicEntity explicitOverride = data.createEntity(new EntityDefinition(
+                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, churchLayer,
+                Optional.empty(), new Geometry.Point(1, 1), LifecycleState.REALIZED, Optional.of(ProtectionLevel.UNPROTECTED)
+        ));
+        assertEquals(ProtectionLevel.UNPROTECTED, explicitOverride.protectionLevel());
+    }
+
+    @Test
+    void protectionLevelCanBeChangedAfterCreationAndSurvivesReload() {
+        CartographySavedData data = new CartographySavedData();
+        GeographicEntity created = data.createEntity(new EntityDefinition(
+                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, Layer.LOCATION_ID,
+                Optional.of("Nonceville"), new Geometry.Point(0, 0), LifecycleState.REALIZED, Optional.empty()
+        ));
+
+        Optional<GeographicEntity> updated = data.setProtectionLevel(created.id(), ProtectionLevel.NO_VOXEL_CHANGE_FULL_HEIGHT);
+        assertTrue(updated.isPresent());
+        assertEquals(Optional.of(ProtectionLevel.NO_VOXEL_CHANGE_FULL_HEIGHT), data.getProtectionLevel(created.id()));
+
+        CartographySavedData reloaded = simulateReload(data);
+        assertEquals(Optional.of(ProtectionLevel.NO_VOXEL_CHANGE_FULL_HEIGHT), reloaded.getProtectionLevel(created.id()));
     }
 
     // Goes through CartographySavedData.TYPE's own codec factory, not a private test-only codec,

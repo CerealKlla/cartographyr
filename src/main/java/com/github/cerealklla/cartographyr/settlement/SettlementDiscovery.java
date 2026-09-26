@@ -14,6 +14,7 @@ import com.github.cerealklla.cartographyr.geo.GeographicEntity;
 import com.github.cerealklla.cartographyr.geo.Geometry;
 import com.github.cerealklla.cartographyr.geo.Layer;
 import com.github.cerealklla.cartographyr.geo.LifecycleState;
+import com.github.cerealklla.cartographyr.geo.ProtectionLevel;
 import com.github.cerealklla.cartographyr.natural.NaturalRegionProfile;
 
 import net.minecraft.core.BlockPos;
@@ -68,7 +69,8 @@ public final class SettlementDiscovery {
                 Layer.LOCATION_ID,
                 Optional.of(name),
                 footprint,
-                LifecycleState.REALIZED
+                LifecycleState.REALIZED,
+                Optional.of(ProtectionLevel.NO_VOXEL_CHANGE_ALONG_SURFACE_AND_UP)
         ));
         // Set as a starting point, not baked into EntityDefinition -- a town-management mod is
         // expected to be the thing that upgrades this over the settlement's lifetime (design

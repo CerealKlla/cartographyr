@@ -93,7 +93,8 @@ public final class NaturalRegionDiscovery {
                 Layer.LOCATION_ID,
                 Optional.of(name),
                 new Geometry.Region(newCells),
-                LifecycleState.REALIZED
+                LifecycleState.REALIZED,
+                Optional.empty()
         ));
         CartographyrMod.LOGGER.info(
                 "Natural region discovery: created new {} '{}' ({}) with {} cell(s)",

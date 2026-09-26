@@ -39,7 +39,8 @@ public record GeographicEntity(
         List<AlternateName> alternateNames,
         List<HistoricalFact> historicalFacts,
         Optional<String> designation,
-        Optional<String> specialStatus
+        Optional<String> specialStatus,
+        ProtectionLevel protectionLevel
 ) {
     public static final Codec<GeographicEntity> CODEC = RecordCodecBuilder.create(i -> i.group(
             EntityId.CODEC.fieldOf("id").forGetter(GeographicEntity::id),
@@ -59,10 +60,15 @@ public record GeographicEntity(
             Codec.list(AlternateName.CODEC).fieldOf("alternate_names").forGetter(GeographicEntity::alternateNames),
             Codec.list(HistoricalFact.CODEC).fieldOf("historical_facts").forGetter(GeographicEntity::historicalFacts),
             Codec.STRING.optionalFieldOf("designation").forGetter(GeographicEntity::designation),
-            Codec.STRING.optionalFieldOf("special_status").forGetter(GeographicEntity::specialStatus)
+            Codec.STRING.optionalFieldOf("special_status").forGetter(GeographicEntity::specialStatus),
+            ProtectionLevel.CODEC.optionalFieldOf("protection_level", ProtectionLevel.UNPROTECTED)
+                    .forGetter(GeographicEntity::protectionLevel)
     ).apply(i, GeographicEntity::new));
 
     public static GeographicEntity create(EntityId id, EntityDefinition definition) {
+        ProtectionLevel resolvedProtectionLevel = definition.protectionLevel()
+                .or(() -> ProtectionDefaults.get(definition.layerId()))
+                .orElse(ProtectionLevel.UNPROTECTED);
         return new GeographicEntity(
                 id,
                 definition.dimension(),
@@ -78,56 +84,57 @@ public record GeographicEntity(
                 List.of(),
                 List.of(),
                 Optional.empty(),
-                Optional.empty()
+                Optional.empty(),
+                resolvedProtectionLevel
         );
     }
 
     public GeographicEntity withLifecycleState(LifecycleState newState) {
-        return new GeographicEntity(id, dimension, classification, type, layerId, name, geometry, newState, structureReferences, characteristics, amenities, alternateNames, historicalFacts, designation, specialStatus);
+        return new GeographicEntity(id, dimension, classification, type, layerId, name, geometry, newState, structureReferences, characteristics, amenities, alternateNames, historicalFacts, designation, specialStatus, protectionLevel);
     }
 
     public GeographicEntity withGeometry(Geometry newGeometry) {
-        return new GeographicEntity(id, dimension, classification, type, layerId, name, newGeometry, lifecycleState, structureReferences, characteristics, amenities, alternateNames, historicalFacts, designation, specialStatus);
+        return new GeographicEntity(id, dimension, classification, type, layerId, name, newGeometry, lifecycleState, structureReferences, characteristics, amenities, alternateNames, historicalFacts, designation, specialStatus, protectionLevel);
     }
 
     public GeographicEntity withName(Optional<String> newName) {
-        return new GeographicEntity(id, dimension, classification, type, layerId, newName, geometry, lifecycleState, structureReferences, characteristics, amenities, alternateNames, historicalFacts, designation, specialStatus);
+        return new GeographicEntity(id, dimension, classification, type, layerId, newName, geometry, lifecycleState, structureReferences, characteristics, amenities, alternateNames, historicalFacts, designation, specialStatus, protectionLevel);
     }
 
     public GeographicEntity withAddedStructureReference(GlobalPos structureReference) {
         Set<GlobalPos> updated = new HashSet<>(structureReferences);
         updated.add(structureReference);
-        return new GeographicEntity(id, dimension, classification, type, layerId, name, geometry, lifecycleState, Set.copyOf(updated), characteristics, amenities, alternateNames, historicalFacts, designation, specialStatus);
+        return new GeographicEntity(id, dimension, classification, type, layerId, name, geometry, lifecycleState, Set.copyOf(updated), characteristics, amenities, alternateNames, historicalFacts, designation, specialStatus, protectionLevel);
     }
 
     public GeographicEntity withAddedCharacteristic(Characteristic characteristic) {
         Set<Characteristic> updated = new HashSet<>(characteristics);
         updated.add(characteristic);
-        return new GeographicEntity(id, dimension, classification, type, layerId, name, geometry, lifecycleState, structureReferences, Set.copyOf(updated), amenities, alternateNames, historicalFacts, designation, specialStatus);
+        return new GeographicEntity(id, dimension, classification, type, layerId, name, geometry, lifecycleState, structureReferences, Set.copyOf(updated), amenities, alternateNames, historicalFacts, designation, specialStatus, protectionLevel);
     }
 
     public GeographicEntity withRemovedCharacteristic(Characteristic characteristic) {
         Set<Characteristic> updated = new HashSet<>(characteristics);
         updated.remove(characteristic);
-        return new GeographicEntity(id, dimension, classification, type, layerId, name, geometry, lifecycleState, structureReferences, Set.copyOf(updated), amenities, alternateNames, historicalFacts, designation, specialStatus);
+        return new GeographicEntity(id, dimension, classification, type, layerId, name, geometry, lifecycleState, structureReferences, Set.copyOf(updated), amenities, alternateNames, historicalFacts, designation, specialStatus, protectionLevel);
     }
 
     public GeographicEntity withAddedAmenity(Amenity amenity) {
         Set<Amenity> updated = new HashSet<>(amenities);
         updated.add(amenity);
-        return new GeographicEntity(id, dimension, classification, type, layerId, name, geometry, lifecycleState, structureReferences, characteristics, Set.copyOf(updated), alternateNames, historicalFacts, designation, specialStatus);
+        return new GeographicEntity(id, dimension, classification, type, layerId, name, geometry, lifecycleState, structureReferences, characteristics, Set.copyOf(updated), alternateNames, historicalFacts, designation, specialStatus, protectionLevel);
     }
 
     public GeographicEntity withRemovedAmenity(Amenity amenity) {
         Set<Amenity> updated = new HashSet<>(amenities);
         updated.remove(amenity);
-        return new GeographicEntity(id, dimension, classification, type, layerId, name, geometry, lifecycleState, structureReferences, characteristics, Set.copyOf(updated), alternateNames, historicalFacts, designation, specialStatus);
+        return new GeographicEntity(id, dimension, classification, type, layerId, name, geometry, lifecycleState, structureReferences, characteristics, Set.copyOf(updated), alternateNames, historicalFacts, designation, specialStatus, protectionLevel);
     }
 
     public GeographicEntity withAddedAlternateName(AlternateName alternateName) {
         List<AlternateName> updated = new ArrayList<>(alternateNames);
         updated.add(alternateName);
-        return new GeographicEntity(id, dimension, classification, type, layerId, name, geometry, lifecycleState, structureReferences, characteristics, amenities, List.copyOf(updated), historicalFacts, designation, specialStatus);
+        return new GeographicEntity(id, dimension, classification, type, layerId, name, geometry, lifecycleState, structureReferences, characteristics, amenities, List.copyOf(updated), historicalFacts, designation, specialStatus, protectionLevel);
     }
 
     /** Keeps {@link #historicalFacts} sorted by {@link HistoricalFact#gameTime()} on every insert,
@@ -136,7 +143,7 @@ public record GeographicEntity(
         List<HistoricalFact> updated = new ArrayList<>(historicalFacts);
         updated.add(fact);
         updated.sort(Comparator.comparingLong(HistoricalFact::gameTime));
-        return new GeographicEntity(id, dimension, classification, type, layerId, name, geometry, lifecycleState, structureReferences, characteristics, amenities, alternateNames, List.copyOf(updated), designation, specialStatus);
+        return new GeographicEntity(id, dimension, classification, type, layerId, name, geometry, lifecycleState, structureReferences, characteristics, amenities, alternateNames, List.copyOf(updated), designation, specialStatus, protectionLevel);
     }
 
     /**
@@ -148,7 +155,7 @@ public record GeographicEntity(
      * at display time, not baked into stored data. See decisions.md, 2026-09-25.
      */
     public GeographicEntity withDesignation(Optional<String> newDesignation) {
-        return new GeographicEntity(id, dimension, classification, type, layerId, name, geometry, lifecycleState, structureReferences, characteristics, amenities, alternateNames, historicalFacts, newDesignation, specialStatus);
+        return new GeographicEntity(id, dimension, classification, type, layerId, name, geometry, lifecycleState, structureReferences, characteristics, amenities, alternateNames, historicalFacts, newDesignation, specialStatus, protectionLevel);
     }
 
     /**
@@ -159,6 +166,16 @@ public record GeographicEntity(
      * decisions.md, 2026-09-25.
      */
     public GeographicEntity withSpecialStatus(Optional<String> newSpecialStatus) {
-        return new GeographicEntity(id, dimension, classification, type, layerId, name, geometry, lifecycleState, structureReferences, characteristics, amenities, alternateNames, historicalFacts, designation, newSpecialStatus);
+        return new GeographicEntity(id, dimension, classification, type, layerId, name, geometry, lifecycleState, structureReferences, characteristics, amenities, alternateNames, historicalFacts, designation, newSpecialStatus, protectionLevel);
+    }
+
+    /**
+     * The entity's current {@link ProtectionLevel} -- purely informational (see that class's
+     * Javadoc); Cartographyr never enforces it itself. Set an initial value via {@link
+     * EntityDefinition#protectionLevel()} at creation, or change it later through this method (e.g.
+     * a town-management mod upgrading a settlement's protection as it grows).
+     */
+    public GeographicEntity withProtectionLevel(ProtectionLevel newProtectionLevel) {
+        return new GeographicEntity(id, dimension, classification, type, layerId, name, geometry, lifecycleState, structureReferences, characteristics, amenities, alternateNames, historicalFacts, designation, specialStatus, newProtectionLevel);
     }
 }

@@ -24,6 +24,7 @@ import com.github.cerealklla.cartographyr.geo.GeographicEntity;
 import com.github.cerealklla.cartographyr.geo.Geometry;
 import com.github.cerealklla.cartographyr.geo.HistoricalFact;
 import com.github.cerealklla.cartographyr.geo.LifecycleState;
+import com.github.cerealklla.cartographyr.geo.ProtectionLevel;
 
 import net.minecraft.core.GlobalPos;
 import net.minecraft.resources.Identifier;
@@ -223,6 +224,17 @@ public final class CartographySavedData extends SavedData {
     /** @apiNote Not the intended integration point — use {@code Cartography.setSpecialStatus} instead. */
     public Optional<GeographicEntity> setSpecialStatus(EntityId id, String specialStatus) {
         return updateEntity(id, entity -> entity.withSpecialStatus(Optional.of(specialStatus)));
+    }
+
+    /** @apiNote Not the intended integration point — use {@code Cartography.setProtectionLevel} instead. */
+    public Optional<GeographicEntity> setProtectionLevel(EntityId id, ProtectionLevel protectionLevel) {
+        return updateEntity(id, entity -> entity.withProtectionLevel(protectionLevel));
+    }
+
+    /** @apiNote Not the intended integration point — use {@code Cartography.getProtectionLevel} instead. */
+    public Optional<ProtectionLevel> getProtectionLevel(EntityId id) {
+        GeographicEntity entity = entities.get(id);
+        return entity == null ? Optional.empty() : Optional.of(entity.protectionLevel());
     }
 
     /** @apiNote Not the intended integration point — use {@code Cartography.getSpecialStatus} instead. */

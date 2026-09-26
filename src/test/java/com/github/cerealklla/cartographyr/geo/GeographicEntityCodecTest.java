@@ -35,7 +35,8 @@ class GeographicEntityCodecTest {
                 List.of(),
                 List.of(),
                 Optional.empty(),
-                Optional.empty()
+                Optional.empty(),
+                ProtectionLevel.UNPROTECTED
         );
 
         GeographicEntity decoded = roundTrip(original);
@@ -61,7 +62,8 @@ class GeographicEntityCodecTest {
                 List.of(),
                 List.of(),
                 Optional.empty(),
-                Optional.empty()
+                Optional.empty(),
+                ProtectionLevel.UNPROTECTED
         );
 
         GeographicEntity decoded = roundTrip(original);
@@ -86,7 +88,8 @@ class GeographicEntityCodecTest {
                 List.of(),
                 List.of(),
                 Optional.empty(),
-                Optional.empty()
+                Optional.empty(),
+                ProtectionLevel.UNPROTECTED
         );
 
         GeographicEntity decoded = roundTrip(original);
@@ -112,7 +115,8 @@ class GeographicEntityCodecTest {
                 List.of(),
                 List.of(),
                 Optional.empty(),
-                Optional.empty()
+                Optional.empty(),
+                ProtectionLevel.UNPROTECTED
         );
 
         GeographicEntity decoded = roundTrip(original);
@@ -138,7 +142,8 @@ class GeographicEntityCodecTest {
                 List.of(),
                 List.of(),
                 Optional.empty(),
-                Optional.empty()
+                Optional.empty(),
+                ProtectionLevel.UNPROTECTED
         );
 
         GeographicEntity decoded = roundTrip(original);
@@ -167,7 +172,8 @@ class GeographicEntityCodecTest {
                 ),
                 List.of(),
                 Optional.empty(),
-                Optional.empty()
+                Optional.empty(),
+                ProtectionLevel.UNPROTECTED
         );
 
         GeographicEntity decoded = roundTrip(original);
@@ -196,7 +202,8 @@ class GeographicEntityCodecTest {
                         new HistoricalFact("Lumber mill built", 24000L, Optional.empty())
                 ),
                 Optional.empty(),
-                Optional.empty()
+                Optional.empty(),
+                ProtectionLevel.UNPROTECTED
         );
 
         GeographicEntity decoded = roundTrip(original);

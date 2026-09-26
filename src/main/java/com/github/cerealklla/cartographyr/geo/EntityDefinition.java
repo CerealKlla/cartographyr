@@ -15,6 +15,10 @@ import net.minecraft.world.level.Level;
  *                Cartographyr's own built-in layer) — no validation against {@link LayerRegistry}
  *                at creation time; a dangling reference to an unregistered layer is allowed, same
  *                trust-based spirit as {@link EntityType}/{@link Classification}.
+ * @param protectionLevel an explicit starting {@link ProtectionLevel} for this entity, or {@link
+ *                Optional#empty()} to fall back to {@code layerId}'s configured default (see
+ *                {@link ProtectionDefaults}), and then to {@link ProtectionLevel#UNPROTECTED} if
+ *                the layer has no default configured either.
  */
 public record EntityDefinition(
         ResourceKey<Level> dimension,
@@ -23,6 +27,7 @@ public record EntityDefinition(
         Identifier layerId,
         Optional<String> name,
         Geometry geometry,
-        LifecycleState lifecycleState
+        LifecycleState lifecycleState,
+        Optional<ProtectionLevel> protectionLevel
 ) {
 }

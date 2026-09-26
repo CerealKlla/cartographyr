@@ -6,6 +6,7 @@ import com.mojang.logging.LogUtils;
 
 import com.github.cerealklla.cartographyr.api.Cartography;
 import com.github.cerealklla.cartographyr.geo.Layer;
+import com.github.cerealklla.cartographyr.geo.ProtectionLevel;
 import com.github.cerealklla.cartographyr.settlement.SettlementListener;
 
 import net.minecraft.world.level.Level;
@@ -29,6 +30,18 @@ public class CartographyrMod {
         // Cartographyr's own natural/settlement/inclusions detection all shares this one built-in
         // layer -- a Territory mod or similar would register its own at a different placement.
         Cartography.registerLayer(new Layer(Layer.LOCATION_ID, "Location", 0));
+
+        // Protection level (design doc addendum, 2026-09-26) -- register the three built-ins so
+        // they show up in Cartography.getRegisteredProtectionLevels, and set the Location layer's
+        // default to UNPROTECTED (natural regions' correct default). Settlements share this same
+        // layer but need a stricter default (NoVoxelChangeAlongSurfaceAndUp) -- since one layer
+        // default can't express two different values, settlement-creating code (SettlementDiscovery
+        // here, and Settlemynts' own founding code) passes that protection level explicitly instead
+        // of relying on this layer default. See ProtectionDefaults' own Javadoc.
+        Cartography.registerProtectionLevel(ProtectionLevel.UNPROTECTED);
+        Cartography.registerProtectionLevel(ProtectionLevel.NO_VOXEL_CHANGE_FULL_HEIGHT);
+        Cartography.registerProtectionLevel(ProtectionLevel.NO_VOXEL_CHANGE_ALONG_SURFACE_AND_UP);
+        Cartography.setDefaultProtectionLevel(Layer.LOCATION_ID, ProtectionLevel.UNPROTECTED);
 
         // Game-bus listener (not the mod bus above) — this is what actually triggers
         // CartographySavedData.TYPE's registration at real server boot, proving the wiring
