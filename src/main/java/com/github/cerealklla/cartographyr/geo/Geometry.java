@@ -39,6 +39,21 @@ public sealed interface Geometry permits Geometry.Point, Geometry.Bounds, Geomet
 
     ChunkPos maxChunk();
 
+    /**
+     * A single representative block position for this geometry -- the midpoint of {@link
+     * #minChunk()}/{@link #maxChunk()}'s middle blocks. Not exact for irregular shapes (a {@link
+     * Region}'s bounding-box center may not even be one of its own cells), but good enough for
+     * coarse distance checks between entities (see {@code natural.NaturalRegionDiscovery}'s
+     * duplicate-name-avoidance radius check, added 2026-09-26).
+     */
+    default int centerBlockX() {
+        return (minChunk().getMiddleBlockX() + maxChunk().getMiddleBlockX()) / 2;
+    }
+
+    default int centerBlockZ() {
+        return (minChunk().getMiddleBlockZ() + maxChunk().getMiddleBlockZ()) / 2;
+    }
+
     record Point(int x, int z) implements Geometry {
         static final MapCodec<Point> MAP_CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
                 Codec.INT.fieldOf("x").forGetter(Point::x),

@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import com.github.cerealklla.cartographyr.CartographyrMod;
 import com.github.cerealklla.cartographyr.api.Cartography;
@@ -84,7 +85,7 @@ public final class NaturalRegionDiscovery {
             return Cartography.updateEntity(level, existing.id(), e -> e.withGeometry(new Geometry.Region(mergedCells)));
         }
 
-        String name = pickName(profile, newCells.size(), startBiome.value().getBaseTemperature());
+        String name = pickUniqueName(level, start, profile, newCells.size(), startBiome.value().getBaseTemperature());
         GeographicEntity created = Cartography.createEntity(level, new EntityDefinition(
                 level.dimension(),
                 Classification.NATURAL,
@@ -225,6 +226,72 @@ public final class NaturalRegionDiscovery {
     // (e.g. "The Ancient Woods of Sadness"), independent of whether a prefix was also added. Only
     // sometimes, per the user's explicit intent -- most names shouldn't have this.
     private static final double FLAVOR_SUFFIX_CHANCE = 0.2;
+
+    // A real-world mile has no native meaning in block coordinates -- this project has no other
+    // established conversion, so 1 mile = 1609 blocks (the standard real-world figure, treating 1
+    // block as 1 meter) is defined here specifically for this radius. See decisions.md, 2026-09-26.
+    private static final double BLOCKS_PER_MILE = 1609.0;
+    private static final double DUPLICATE_NAME_RADIUS_BLOCKS = 3 * BLOCKS_PER_MILE;
+    // Bounds worst-case cost, same "don't loop forever" precedent as MAX_CELLS -- if 20 rerolls
+    // all collide (astronomically unlikely given the pool sizes), the last roll is accepted as-is
+    // rather than search indefinitely.
+    private static final int MAX_NAME_ATTEMPTS = 20;
+
+    /**
+     * Like {@link #pickName}, but rerolls (up to {@link #MAX_NAME_ATTEMPTS} times) if the result
+     * collides with an existing NATURAL entity's name within {@link #DUPLICATE_NAME_RADIUS_BLOCKS}
+     * of {@code start} -- a real playtest request: two nearby regions ending up with the exact same
+     * generated name reads as a bug, not a coincidence, even though the underlying word pools are
+     * small enough for it to happen by chance. Comparison uses {@link #nameIdentity}, which ignores
+     * the small/large size prefix specifically (per the request), since two regions differing only
+     * in how much area they happen to cover shouldn't be blocked from sharing everything else about
+     * their name.
+     */
+    private static String pickUniqueName(ServerLevel level, BlockPos start, NaturalRegionProfile profile, int cellCount, float baseTemperature) {
+        Set<String> nearbyIdentities = nearbyNameIdentities(level, start);
+        String name = pickName(profile, cellCount, baseTemperature);
+        for (int attempt = 1; nearbyIdentities.contains(nameIdentity(name)) && attempt < MAX_NAME_ATTEMPTS; attempt++) {
+            name = pickName(profile, cellCount, baseTemperature);
+        }
+        return name;
+    }
+
+    /** Every NATURAL entity's name within {@link #DUPLICATE_NAME_RADIUS_BLOCKS} of {@code start}, as {@link #nameIdentity} keys. */
+    private static Set<String> nearbyNameIdentities(ServerLevel level, BlockPos start) {
+        double radiusSq = DUPLICATE_NAME_RADIUS_BLOCKS * DUPLICATE_NAME_RADIUS_BLOCKS;
+        Set<String> identities = new HashSet<>();
+        for (GeographicEntity entity : Cartography.findEntities(level, Classification.NATURAL)) {
+            if (entity.name().isEmpty()) {
+                continue;
+            }
+            double dx = entity.geometry().centerBlockX() - start.getX();
+            double dz = entity.geometry().centerBlockZ() - start.getZ();
+            if (dx * dx + dz * dz <= radiusSq) {
+                identities.add(nameIdentity(entity.name().get()));
+            }
+        }
+        return identities;
+    }
+
+    /**
+     * {@code name} with a leading small/large size prefix (see {@link RegionWordPools#SIZE_SMALL}/
+     * {@link RegionWordPools#SIZE_LARGE}) stripped, if present -- the comparison key {@link
+     * #pickUniqueName} uses so that size alone doesn't count as making two names different.
+     * Package-visible for {@code NaturalRegionDiscoveryTest}.
+     */
+    static String nameIdentity(String name) {
+        for (String sizeWord : SIZE_WORDS) {
+            String prefix = "The " + sizeWord + " ";
+            if (name.startsWith(prefix)) {
+                return "The " + name.substring(prefix.length());
+            }
+        }
+        return name;
+    }
+
+    private static final List<String> SIZE_WORDS = Stream.concat(
+            RegionWordPools.SIZE_SMALL.stream(), RegionWordPools.SIZE_LARGE.stream()
+    ).toList();
 
     /**
      * Composes a region name from {@code profile}'s own terrain-noun/thematic-adjective pools plus

@@ -1,10 +1,13 @@
 package com.github.cerealklla.cartographyr.natural;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+
+import com.github.cerealklla.cartographyr.naming.RegionWordPools;
 
 /**
  * Covers {@link NaturalRegionDiscovery#pickName} -- the pure, composable part of natural-region
@@ -55,6 +58,22 @@ class NaturalRegionDiscoveryTest {
             sawColdPrefix = containsAny(name, com.github.cerealklla.cartographyr.naming.RegionWordPools.CLIMATE_COLD);
         }
         assertTrue(sawColdPrefix, "expected at least one cold-climate-prefixed name for a cold biome across repeated draws");
+    }
+
+    @Test
+    void nameIdentityStripsALeadingSizePrefixButKeepsEverythingElse() {
+        String small = "The " + RegionWordPools.SIZE_SMALL.get(0) + " Woods";
+        String large = "The " + RegionWordPools.SIZE_LARGE.get(0) + " Woods";
+        assertEquals("The Woods", NaturalRegionDiscovery.nameIdentity(small));
+        assertEquals("The Woods", NaturalRegionDiscovery.nameIdentity(large));
+        assertEquals(NaturalRegionDiscovery.nameIdentity(small), NaturalRegionDiscovery.nameIdentity(large));
+    }
+
+    @Test
+    void nameIdentityLeavesNonSizePrefixedNamesUnchanged() {
+        assertEquals("The Ancient Woods", NaturalRegionDiscovery.nameIdentity("The Ancient Woods"));
+        assertEquals("The Woods of Sorrow", NaturalRegionDiscovery.nameIdentity("The Woods of Sorrow"));
+        assertEquals("The Woods", NaturalRegionDiscovery.nameIdentity("The Woods"));
     }
 
     private static boolean containsAny(String name, List<String> words) {
