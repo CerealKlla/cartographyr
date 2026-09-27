@@ -240,37 +240,93 @@ public sealed interface Geometry permits Geometry.Point, Geometry.Bounds, Geomet
             ).apply(i, Vertex::new));
         }
 
+        /** A unit direction, used by {@link #localOutwardNormals} -- not itself a location. */
+        public record Normal(double x, double z) {
+        }
+
+        /**
+         * The local outward-pointing direction at each vertex -- the (renormalized) average of the
+         * two adjacent edges' own outward unit normals. A per-vertex, edge-tangent-aware notion of
+         * "which way is outward," used by {@link #coveringBlocks} (and by Settlemynts' wall-offset
+         * generation, which needs the same primitive one polygon later). Deliberately **not** "vertex
+         * minus the whole polygon's centroid" -- that comparison is only correct for axis-aligned
+         * rectangles; for a many-vertex, roughly circular polygon (e.g. a settlement fitted from many
+         * perimeter stakes) it pushes some vertices in a direction that doesn't match their own local
+         * edge tangents at all, producing a visibly lumpy/humped result along diagonal runs (found via
+         * live playtest, 2026-09-27, see decisions.md same date). Winding (CW/CCW) is detected from
+         * the signed area so the normal always points away from the polygon's own interior regardless
+         * of vertex order.
+         */
+        public static List<Normal> localOutwardNormals(List<Vertex> vertices) {
+            int n = vertices.size();
+            double signedArea2 = 0;
+            for (int i = 0; i < n; i++) {
+                Vertex a = vertices.get(i);
+                Vertex b = vertices.get((i + 1) % n);
+                signedArea2 += (double) a.x() * b.z() - (double) b.x() * a.z();
+            }
+            boolean ccw = signedArea2 > 0;
+
+            double[] edgeNx = new double[n];
+            double[] edgeNz = new double[n];
+            for (int i = 0; i < n; i++) {
+                Vertex a = vertices.get(i);
+                Vertex b = vertices.get((i + 1) % n);
+                double dx = b.x() - a.x();
+                double dz = b.z() - a.z();
+                double len = Math.hypot(dx, dz);
+                if (len < 1.0e-9) {
+                    continue; // Degenerate (repeated vertex) edge -- leaves both components 0, handled below.
+                }
+                double ux = dx / len;
+                double uz = dz / len;
+                edgeNx[i] = ccw ? uz : -uz;
+                edgeNz[i] = ccw ? -ux : ux;
+            }
+
+            List<Normal> result = new ArrayList<>(n);
+            for (int i = 0; i < n; i++) {
+                int prevEdge = (i - 1 + n) % n;
+                double nx = edgeNx[prevEdge] + edgeNx[i];
+                double nz = edgeNz[prevEdge] + edgeNz[i];
+                double len = Math.hypot(nx, nz);
+                if (len < 1.0e-9) {
+                    // A 180-degree fold (the two adjacent edges point directly opposite) -- fall back
+                    // to whichever single adjacent edge normal is non-zero; genuinely ambiguous, rare.
+                    nx = edgeNx[i] != 0 || edgeNz[i] != 0 ? edgeNx[i] : edgeNx[prevEdge];
+                    nz = edgeNx[i] != 0 || edgeNz[i] != 0 ? edgeNz[i] : edgeNz[prevEdge];
+                    len = Math.hypot(nx, nz);
+                }
+                result.add(len < 1.0e-9 ? new Normal(0, 0) : new Normal(nx / len, nz / len));
+            }
+            return result;
+        }
+
         /**
          * Builds a polygon that fully covers every listed block, not just the infinitesimal point at
          * each vertex's coordinate. {@code contains}'s even-odd ray-casting test is defined over
          * continuous space, but callers here (a placed stake, a structure corner) mean "this whole
          * block," which occupies the continuous square from {@code (x,z)} to {@code (x+1,z+1)}. A raw
          * {@code new Polygon(vertices)} only reaches each vertex's near corner, so a block on the
-         * high-x/high-z side of the shape (e.g. the far corner of a rectangle) tests as outside its
-         * own polygon under ray-casting's boundary rules. This factory pushes each vertex's coordinate
-         * out to the far edge of its own block on whichever side of the vertex set's centroid it sits,
-         * so the resulting polygon's continuous extent covers every listed block exactly, corners
-         * included. The centroid-relative push is the same approximation already accepted elsewhere in
-         * this class (see {@link #convexHull}) for irregular/concave inputs — exact for axis-aligned
-         * rectangles, a reasonable approximation otherwise.
+         * outward side of the shape (e.g. the far corner of a rectangle) tests as outside its own
+         * polygon under ray-casting's boundary rules. This factory pushes each vertex's coordinate out
+         * to the far edge of its own block on whichever side its {@link #localOutwardNormals} own
+         * sign sits, per axis, so the resulting polygon's continuous extent covers every listed block
+         * exactly, corners included. Exact for axis-aligned rectangles; a reasonable, edge-tangent-
+         * aware approximation otherwise (replaced a cruder centroid-relative version, 2026-09-27, see
+         * decisions.md same date -- that version was only correct for rectangles).
          */
         public static Polygon coveringBlocks(List<Vertex> blocks) {
             if (blocks.isEmpty()) {
                 throw new IllegalArgumentException("Cannot build a polygon from zero blocks");
             }
-            double centroidX = 0;
-            double centroidZ = 0;
-            for (Vertex v : blocks) {
-                centroidX += v.x();
-                centroidZ += v.z();
-            }
-            centroidX /= blocks.size();
-            centroidZ /= blocks.size();
-
+            List<Normal> normals = localOutwardNormals(blocks);
             List<Vertex> covering = new ArrayList<>(blocks.size());
-            for (Vertex v : blocks) {
-                int x = v.x() >= centroidX ? v.x() + 1 : v.x();
-                int z = v.z() >= centroidZ ? v.z() + 1 : v.z();
+            for (int i = 0; i < blocks.size(); i++) {
+                Vertex v = blocks.get(i);
+                Normal normal = normals.get(i);
+                int x = normal.x() >= 0 ? v.x() + 1 : v.x();
+                int z = normal.z() >= 0 ? v.z() + 1 : v.z();
                 covering.add(new Vertex(x, z));
             }
             return new Polygon(covering);

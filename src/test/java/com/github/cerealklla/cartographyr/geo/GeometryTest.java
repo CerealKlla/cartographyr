@@ -128,6 +128,30 @@ class GeometryTest {
     }
 
     @Test
+    void coveringBlocksHandlesDiagonalEdgesNotJustAxisAlignedRectangles() {
+        // An octagon (four axis-aligned edges, four 45-degree diagonal edges) -- regression coverage
+        // for the 2026-09-27 rewrite from a centroid-relative push (only correct for rectangles) to a
+        // local-outward-normal push (edge-tangent-aware, fixes a live "lumpy diagonal wall" report on
+        // a many-vertex settlement shape). Every vertex's own block must still be contained, same
+        // requirement as the rectangle case, now proven for diagonal edges too.
+        List<Geometry.Polygon.Vertex> stakeBlocks = List.of(
+                new Geometry.Polygon.Vertex(3, 0), new Geometry.Polygon.Vertex(9, 0),
+                new Geometry.Polygon.Vertex(12, 3), new Geometry.Polygon.Vertex(12, 9),
+                new Geometry.Polygon.Vertex(9, 12), new Geometry.Polygon.Vertex(3, 12),
+                new Geometry.Polygon.Vertex(0, 9), new Geometry.Polygon.Vertex(0, 3));
+        Geometry.Polygon polygon = Geometry.Polygon.coveringBlocks(stakeBlocks);
+
+        for (Geometry.Polygon.Vertex v : stakeBlocks) {
+            assertTrue(polygon.contains(v.x(), v.z()), "Expected stake block (" + v.x() + "," + v.z() + ") to be contained");
+        }
+        assertTrue(polygon.contains(6, 6)); // center, clearly interior
+        assertFalse(polygon.contains(-2, 6));
+        assertFalse(polygon.contains(6, -2));
+        assertFalse(polygon.contains(14, 6));
+        assertFalse(polygon.contains(6, 14));
+    }
+
+    @Test
     void polygonRoundTripsThroughCodec() {
         Geometry.Polygon original = new Geometry.Polygon(List.of(
                 new Geometry.Polygon.Vertex(0, 0),
