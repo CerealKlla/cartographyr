@@ -27,21 +27,24 @@ public class CartographyrMod {
     public CartographyrMod(IEventBus modEventBus, ModContainer modContainer) {
         modEventBus.addListener(this::commonSetup);
 
-        // Cartographyr's own natural/settlement/inclusions detection all shares this one built-in
-        // layer -- a Territory mod or similar would register its own at a different placement.
-        Cartography.registerLayer(new Layer(Layer.LOCATION_ID, "Location", 0));
+        // Cartographyr's own natural regions and settlements used to share one "Location" layer;
+        // split 2026-09-26 (see decisions.md) into separate Region/Settlement layers so destroying
+        // a settlement never requires touching the natural region underneath it. Lyfe's location
+        // overlay still renders both on the same HUD row (Settlement preferred over Region), just
+        // no longer via same-layer resolution -- see Layer.REGION_ID/SETTLEMENT_ID's own Javadoc.
+        Cartography.registerLayer(new Layer(Layer.REGION_ID, "Region", 0));
+        Cartography.registerLayer(new Layer(Layer.SETTLEMENT_ID, "Settlement", 1));
 
         // Protection level (design doc addendum, 2026-09-26) -- register the three built-ins so
-        // they show up in Cartography.getRegisteredProtectionLevels, and set the Location layer's
-        // default to UNPROTECTED (natural regions' correct default). Settlements share this same
-        // layer but need a stricter default (NoVoxelChangeAlongSurfaceAndUp) -- since one layer
-        // default can't express two different values, settlement-creating code (SettlementDiscovery
-        // here, and Settlemynts' own founding code) passes that protection level explicitly instead
-        // of relying on this layer default. See ProtectionDefaults' own Javadoc.
+        // they show up in Cartography.getRegisteredProtectionLevels, and set each new layer's own
+        // accurate default -- the Region/Settlement split above means this can now be a clean
+        // per-layer default with no explicit per-creation override needed (the workaround
+        // ProtectionDefaults' Javadoc used to describe, back when both shared one layer).
         Cartography.registerProtectionLevel(ProtectionLevel.UNPROTECTED);
         Cartography.registerProtectionLevel(ProtectionLevel.NO_VOXEL_CHANGE_FULL_HEIGHT);
         Cartography.registerProtectionLevel(ProtectionLevel.NO_VOXEL_CHANGE_ALONG_SURFACE_AND_UP);
-        Cartography.setDefaultProtectionLevel(Layer.LOCATION_ID, ProtectionLevel.UNPROTECTED);
+        Cartography.setDefaultProtectionLevel(Layer.REGION_ID, ProtectionLevel.UNPROTECTED);
+        Cartography.setDefaultProtectionLevel(Layer.SETTLEMENT_ID, ProtectionLevel.NO_VOXEL_CHANGE_ALONG_SURFACE_AND_UP);
 
         // Game-bus listener (not the mod bus above) — this is what actually triggers
         // CartographySavedData.TYPE's registration at real server boot, proving the wiring

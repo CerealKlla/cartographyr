@@ -52,7 +52,7 @@ class CartographySavedDataTest {
                 Level.OVERWORLD,
                 Classification.CONSTRUCTED,
                 EntityType.SETTLEMENT,
-                Layer.LOCATION_ID,
+                Layer.SETTLEMENT_ID,
                 Optional.of("Capital City of Nonce"),
                 new Geometry.Point(0, 0),
                 LifecycleState.PLANNED, Optional.empty()
@@ -77,7 +77,7 @@ class CartographySavedDataTest {
                 Level.OVERWORLD,
                 Classification.CONSTRUCTED,
                 EntityType.SETTLEMENT,
-                Layer.LOCATION_ID,
+                Layer.SETTLEMENT_ID,
                 Optional.of("Capital City of Nonce"),
                 new Geometry.Point(0, 0),
                 LifecycleState.PLANNED, Optional.empty()
@@ -106,11 +106,11 @@ class CartographySavedDataTest {
         GlobalPos structure = GlobalPos.of(Level.OVERWORLD, new BlockPos(0, 64, 0));
 
         GeographicEntity first = data.createEntity(new EntityDefinition(
-                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, Layer.LOCATION_ID,
+                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, Layer.SETTLEMENT_ID,
                 Optional.empty(), new Geometry.Point(0, 0), LifecycleState.PLANNED, Optional.empty()
         ));
         GeographicEntity second = data.createEntity(new EntityDefinition(
-                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, Layer.LOCATION_ID,
+                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, Layer.SETTLEMENT_ID,
                 Optional.empty(), new Geometry.Point(100, 100), LifecycleState.PLANNED, Optional.empty()
         ));
 
@@ -129,7 +129,7 @@ class CartographySavedDataTest {
         CartographySavedData data = new CartographySavedData();
 
         GeographicEntity created = data.createEntity(new EntityDefinition(
-                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, Layer.LOCATION_ID,
+                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, Layer.SETTLEMENT_ID,
                 Optional.of("Nonceville"), new Geometry.Point(0, 0), LifecycleState.REALIZED, Optional.empty()
         ));
 
@@ -154,7 +154,7 @@ class CartographySavedDataTest {
         CartographySavedData data = new CartographySavedData();
 
         GeographicEntity created = data.createEntity(new EntityDefinition(
-                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, Layer.LOCATION_ID,
+                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, Layer.SETTLEMENT_ID,
                 Optional.of("Nonceville"), new Geometry.Point(0, 0), LifecycleState.REALIZED, Optional.empty()
         ));
 
@@ -179,7 +179,7 @@ class CartographySavedDataTest {
         CartographySavedData data = new CartographySavedData();
 
         GeographicEntity created = data.createEntity(new EntityDefinition(
-                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, Layer.LOCATION_ID,
+                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, Layer.SETTLEMENT_ID,
                 Optional.empty(), new Geometry.Point(0, 0), LifecycleState.REALIZED, Optional.empty()
         ));
 
@@ -220,7 +220,7 @@ class CartographySavedDataTest {
         CartographySavedData data = new CartographySavedData();
 
         GeographicEntity created = data.createEntity(new EntityDefinition(
-                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, Layer.LOCATION_ID,
+                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, Layer.SETTLEMENT_ID,
                 Optional.of("Nonceville"), new Geometry.Point(0, 0), LifecycleState.REALIZED, Optional.empty()
         ));
 
@@ -256,12 +256,12 @@ class CartographySavedDataTest {
 
         Geometry.Region desertShape = new Geometry.Region(Set.of(ChunkPos.pack(0, 0), ChunkPos.pack(1, 0)));
         GeographicEntity desert = data.createEntity(new EntityDefinition(
-                Level.OVERWORLD, Classification.NATURAL, EntityType.DESERT, Layer.LOCATION_ID,
+                Level.OVERWORLD, Classification.NATURAL, EntityType.DESERT, Layer.REGION_ID,
                 Optional.of("The Forsaken Sands"), desertShape, LifecycleState.REALIZED, Optional.empty()
         ));
 
         GeographicEntity settlement = data.createEntity(new EntityDefinition(
-                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, Layer.LOCATION_ID,
+                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, Layer.SETTLEMENT_ID,
                 Optional.of("Nonceville"), new Geometry.Point(500, 500), LifecycleState.REALIZED, Optional.empty()
         ));
 
@@ -296,7 +296,7 @@ class CartographySavedDataTest {
 
         CartographySavedData data = new CartographySavedData();
         GeographicEntity territory = data.createEntity(new EntityDefinition(
-                Level.OVERWORLD, claimed, factionTerritory, Layer.LOCATION_ID,
+                Level.OVERWORLD, claimed, factionTerritory, Layer.SETTLEMENT_ID,
                 Optional.of("Redguard Claim"), new Geometry.Point(10, 10), LifecycleState.REALIZED, Optional.empty()
         ));
 
@@ -353,7 +353,7 @@ class CartographySavedDataTest {
     void protectionLevelCanBeChangedAfterCreationAndSurvivesReload() {
         CartographySavedData data = new CartographySavedData();
         GeographicEntity created = data.createEntity(new EntityDefinition(
-                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, Layer.LOCATION_ID,
+                Level.OVERWORLD, Classification.CONSTRUCTED, EntityType.SETTLEMENT, Layer.SETTLEMENT_ID,
                 Optional.of("Nonceville"), new Geometry.Point(0, 0), LifecycleState.REALIZED, Optional.empty()
         ));
 

@@ -6,10 +6,10 @@ import net.minecraft.resources.Identifier;
 
 /**
  * A named, orderable category a {@link GeographicEntity} belongs to — e.g. Cartographyr's own
- * built-in "Location" layer (natural regions and settlements alike), or a future third-party
- * mod's "Territory" layer. Unlike {@link EntityType}/{@link Classification}, this isn't a bare
- * tag value; it carries real metadata ({@code label}, {@code placement}), so it's backed by an
- * actual registry ({@link LayerRegistry}), not just trust-based construction.
+ * built-in "Region"/"Settlement" layers, or a future third-party mod's "Territory" layer. Unlike
+ * {@link EntityType}/{@link Classification}, this isn't a bare tag value; it carries real metadata
+ * ({@code label}, {@code placement}), so it's backed by an actual registry ({@link
+ * LayerRegistry}), not just trust-based construction.
  *
  * <p>Cartographyr only owns this as a data registry — it does not render anything itself. A
  * consumer (e.g. Lyfe's location overlay) is responsible for resolving a {@code layerId} to its
@@ -24,6 +24,21 @@ import net.minecraft.resources.Identifier;
  */
 public record Layer(Identifier id, String label, int placement) {
 
-    /** Cartographyr's own built-in layer — natural regions and settlements alike. Placement 0. */
-    public static final Identifier LOCATION_ID = Identifier.fromNamespaceAndPath(CartographyrMod.MODID, "location");
+    /**
+     * Cartographyr's own built-in Region layer (natural regions only) — placement 0. Split off
+     * from a single shared "Location" layer 2026-09-26 (see decisions.md) so destroying a
+     * settlement never requires touching the natural region underneath it. Despite the different
+     * placement from {@link #SETTLEMENT_ID}, a consumer (Lyfe's location overlay) is expected to
+     * render both on the **same** HUD row, not as two separate stacked lines — preferring the
+     * Settlement layer's entity over the Region layer's when both match a point, the same
+     * "prefer the more specific match" pattern this shared layer used before the split.
+     */
+    public static final Identifier REGION_ID = Identifier.fromNamespaceAndPath(CartographyrMod.MODID, "region");
+
+    /**
+     * Cartographyr's own built-in Settlement layer (player-founded and world-gen-discovered
+     * settlements alike) — placement 1. See {@link #REGION_ID}'s Javadoc for why this is a
+     * separate layer from Region despite sharing one HUD row in practice.
+     */
+    public static final Identifier SETTLEMENT_ID = Identifier.fromNamespaceAndPath(CartographyrMod.MODID, "settlement");
 }

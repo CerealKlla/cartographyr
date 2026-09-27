@@ -90,7 +90,7 @@ public final class NaturalRegionDiscovery {
                 level.dimension(),
                 Classification.NATURAL,
                 profile.type(),
-                Layer.LOCATION_ID,
+                Layer.REGION_ID,
                 Optional.of(name),
                 new Geometry.Region(newCells),
                 LifecycleState.REALIZED,

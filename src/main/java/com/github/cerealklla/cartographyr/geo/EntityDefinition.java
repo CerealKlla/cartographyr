@@ -11,10 +11,11 @@ import net.minecraft.world.level.Level;
  * allocated by the storage layer on creation, not chosen by the caller. Mirrors the design
  * document's Section 5.1 "EntityDefinition" input to {@code createEntity}.
  *
- * @param layerId which {@link Layer} this entity belongs to (see {@link Layer#LOCATION_ID} for
- *                Cartographyr's own built-in layer) — no validation against {@link LayerRegistry}
- *                at creation time; a dangling reference to an unregistered layer is allowed, same
- *                trust-based spirit as {@link EntityType}/{@link Classification}.
+ * @param layerId which {@link Layer} this entity belongs to (see {@link Layer#REGION_ID}/{@link
+ *                Layer#SETTLEMENT_ID} for Cartographyr's own built-in layers) — no validation
+ *                against {@link LayerRegistry} at creation time; a dangling reference to an
+ *                unregistered layer is allowed, same trust-based spirit as {@link EntityType}/
+ *                {@link Classification}.
  * @param protectionLevel an explicit starting {@link ProtectionLevel} for this entity, or {@link
  *                Optional#empty()} to fall back to {@code layerId}'s configured default (see
  *                {@link ProtectionDefaults}), and then to {@link ProtectionLevel#UNPROTECTED} if

@@ -16,14 +16,15 @@ import net.minecraft.resources.Identifier;
  *
  * <p>Only consulted by {@link GeographicEntity#create} when an {@link EntityDefinition} doesn't
  * specify its own {@link EntityDefinition#protectionLevel()} explicitly -- an explicit value on
- * the definition always wins. This matters for Cartographyr's own built-in {@link
- * Layer#LOCATION_ID} layer, which natural regions and settlements both share despite wanting
- * different defaults ({@link ProtectionLevel#UNPROTECTED} vs {@link
- * ProtectionLevel#NO_VOXEL_CHANGE_ALONG_SURFACE_AND_UP}): rather than that one layer's default
- * trying to express two different values, settlement-creating code passes its own protection
- * level explicitly and only natural-region creation relies on the layer default. A single
- * default-per-layer is otherwise the right fit whenever a layer is truly 1:1 with one kind of
- * thing, as in the Church example above.
+ * the definition always wins. Cartographyr's own built-in {@link Layer#REGION_ID}/{@link
+ * Layer#SETTLEMENT_ID} layers each carry their own accurate default ({@link
+ * ProtectionLevel#UNPROTECTED} and {@link ProtectionLevel#NO_VOXEL_CHANGE_ALONG_SURFACE_AND_UP}
+ * respectively) -- natural region and settlement creation both rely on this alone, with no
+ * explicit per-creation override needed. (Before the 2026-09-26 Region/Settlement layer split,
+ * both shared one layer and couldn't express two different defaults this way; settlement-creating
+ * code passed its protection level explicitly as a workaround -- see decisions.md, same date, for
+ * that history.) A single default-per-layer is the right fit whenever a layer is 1:1 with one kind
+ * of thing, as in the Church example above.
  */
 public final class ProtectionDefaults {
 
