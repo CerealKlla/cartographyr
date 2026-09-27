@@ -241,6 +241,42 @@ public sealed interface Geometry permits Geometry.Point, Geometry.Bounds, Geomet
         }
 
         /**
+         * Builds a polygon that fully covers every listed block, not just the infinitesimal point at
+         * each vertex's coordinate. {@code contains}'s even-odd ray-casting test is defined over
+         * continuous space, but callers here (a placed stake, a structure corner) mean "this whole
+         * block," which occupies the continuous square from {@code (x,z)} to {@code (x+1,z+1)}. A raw
+         * {@code new Polygon(vertices)} only reaches each vertex's near corner, so a block on the
+         * high-x/high-z side of the shape (e.g. the far corner of a rectangle) tests as outside its
+         * own polygon under ray-casting's boundary rules. This factory pushes each vertex's coordinate
+         * out to the far edge of its own block on whichever side of the vertex set's centroid it sits,
+         * so the resulting polygon's continuous extent covers every listed block exactly, corners
+         * included. The centroid-relative push is the same approximation already accepted elsewhere in
+         * this class (see {@link #convexHull}) for irregular/concave inputs — exact for axis-aligned
+         * rectangles, a reasonable approximation otherwise.
+         */
+        public static Polygon coveringBlocks(List<Vertex> blocks) {
+            if (blocks.isEmpty()) {
+                throw new IllegalArgumentException("Cannot build a polygon from zero blocks");
+            }
+            double centroidX = 0;
+            double centroidZ = 0;
+            for (Vertex v : blocks) {
+                centroidX += v.x();
+                centroidZ += v.z();
+            }
+            centroidX /= blocks.size();
+            centroidZ /= blocks.size();
+
+            List<Vertex> covering = new ArrayList<>(blocks.size());
+            for (Vertex v : blocks) {
+                int x = v.x() >= centroidX ? v.x() + 1 : v.x();
+                int z = v.z() >= centroidZ ? v.z() + 1 : v.z();
+                covering.add(new Vertex(x, z));
+            }
+            return new Polygon(covering);
+        }
+
+        /**
          * Convex hull of {@code points} via Andrew's monotone chain algorithm — takes the (likely
          * dozens of) corner points of a structure's individual piece bounding boxes and reduces
          * them to a small, storage-cheap footprint. Returns a plain {@link Geometry}, not

@@ -99,6 +99,35 @@ class GeometryTest {
     }
 
     @Test
+    void coveringBlocksIncludesEveryCornerOfARectangle() {
+        // A 5x5: corner blocks at 10..14 inclusive on each axis (matches a user-reported plot-stake
+        // test case, 2026-09-27) -- every one of the four corner blocks, not just the near two under
+        // raw ray-casting, must resolve as contained.
+        Geometry.Polygon polygon = Geometry.Polygon.coveringBlocks(List.of(
+                new Geometry.Polygon.Vertex(10, 10),
+                new Geometry.Polygon.Vertex(14, 10),
+                new Geometry.Polygon.Vertex(14, 14),
+                new Geometry.Polygon.Vertex(10, 14)
+        ));
+
+        for (int x = 10; x <= 14; x++) {
+            for (int z = 10; z <= 14; z++) {
+                assertTrue(polygon.contains(x, z), "Expected block (" + x + "," + z + ") to be contained");
+            }
+        }
+        assertFalse(polygon.contains(9, 12));
+        assertFalse(polygon.contains(15, 12));
+        assertFalse(polygon.contains(12, 9));
+        assertFalse(polygon.contains(12, 15));
+        assertFalse(polygon.contains(15, 15));
+    }
+
+    @Test
+    void coveringBlocksRejectsEmptyInput() {
+        assertThrows(IllegalArgumentException.class, () -> Geometry.Polygon.coveringBlocks(List.of()));
+    }
+
+    @Test
     void polygonRoundTripsThroughCodec() {
         Geometry.Polygon original = new Geometry.Polygon(List.of(
                 new Geometry.Polygon.Vertex(0, 0),
