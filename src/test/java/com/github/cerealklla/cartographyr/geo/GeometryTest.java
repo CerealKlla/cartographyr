@@ -152,6 +152,90 @@ class GeometryTest {
     }
 
     @Test
+    void coveringBlocksExcludesUnstakedNotchBlocksAtAReflexCorner() {
+        // An L-shape: a 4x2 bottom strip plus a 2x2 upper-left strip, meeting at a reflex (concave)
+        // corner at (2,2). Regression coverage for the 2026-09-27 rewrite from a per-vertex outward
+        // push (verified by hand to leak block (3,2) -- an un-staked notch block -- into the covered
+        // set) to rasterize-then-contour. The reflex vertex's OWN block must still be included (a
+        // stake is never a special excluded case), but nothing in the excluded notch should be.
+        List<Geometry.Polygon.Vertex> stakes = List.of(
+                new Geometry.Polygon.Vertex(0, 0), new Geometry.Polygon.Vertex(4, 0),
+                new Geometry.Polygon.Vertex(4, 2), new Geometry.Polygon.Vertex(2, 2),
+                new Geometry.Polygon.Vertex(2, 4), new Geometry.Polygon.Vertex(0, 4));
+        Geometry.Polygon polygon = Geometry.Polygon.coveringBlocks(stakes);
+
+        // Bottom strip (x 0..3, z 0..1) and upper-left strip (x 0..1, z 2..3).
+        for (int x = 0; x <= 3; x++) {
+            for (int z = 0; z <= 1; z++) {
+                assertTrue(polygon.contains(x, z), "Expected bottom strip block (" + x + "," + z + ") to be contained");
+            }
+        }
+        for (int x = 0; x <= 1; x++) {
+            for (int z = 2; z <= 3; z++) {
+                assertTrue(polygon.contains(x, z), "Expected upper strip block (" + x + "," + z + ") to be contained");
+            }
+        }
+        assertTrue(polygon.contains(2, 2), "The reflex vertex's own stake block must be contained");
+        assertFalse(polygon.contains(3, 2), "An un-staked notch block must not leak into the covered set");
+        assertFalse(polygon.contains(2, 3), "An un-staked notch block must not leak into the covered set");
+        assertFalse(polygon.contains(3, 3), "An un-staked notch block must not leak into the covered set");
+    }
+
+    @Test
+    void coveringBlocksHandlesACShapeWithoutSelfIntersecting() {
+        // A thick "C": an outer 7x7 square with a 3-wide notch bitten out of the right side, stakes
+        // placed in a genuine walked path (not star-shaped from the shape's own centroid, which sits
+        // in the notch's open mouth) -- exactly the case angular sorting cannot handle, per the
+        // user's original question ("would a C-shaped stake layout come out as a C, or circular?").
+        List<Geometry.Polygon.Vertex> stakes = List.of(
+                new Geometry.Polygon.Vertex(0, 0), new Geometry.Polygon.Vertex(6, 0),
+                new Geometry.Polygon.Vertex(6, 2), new Geometry.Polygon.Vertex(3, 2),
+                new Geometry.Polygon.Vertex(3, 4), new Geometry.Polygon.Vertex(6, 4),
+                new Geometry.Polygon.Vertex(6, 6), new Geometry.Polygon.Vertex(0, 6));
+        Geometry.Polygon polygon = Geometry.Polygon.coveringBlocks(stakes);
+
+        for (Geometry.Polygon.Vertex v : stakes) {
+            assertTrue(polygon.contains(v.x(), v.z()), "Expected stake block (" + v.x() + "," + v.z() + ") to be contained");
+        }
+        assertTrue(polygon.contains(1, 3)); // deep in the C's own body, left side
+        assertFalse(polygon.contains(5, 3)); // inside the notch (the C's open mouth) -- must stay excluded
+        assertFalse(polygon.contains(8, 3)); // clearly outside
+    }
+
+    @Test
+    void outerRingSitsOutsideANotchWithoutCuttingAcrossIt() {
+        List<Geometry.Polygon.Vertex> stakes = List.of(
+                new Geometry.Polygon.Vertex(0, 0), new Geometry.Polygon.Vertex(4, 0),
+                new Geometry.Polygon.Vertex(4, 2), new Geometry.Polygon.Vertex(2, 2),
+                new Geometry.Polygon.Vertex(2, 4), new Geometry.Polygon.Vertex(0, 4));
+        Geometry.Polygon polygon = Geometry.Polygon.coveringBlocks(stakes);
+        List<Geometry.Polygon.Vertex> ring = Geometry.Polygon.outerRing(polygon);
+
+        for (Geometry.Polygon.Vertex v : ring) {
+            assertFalse(polygon.contains(v.x(), v.z()), "Wall ring block (" + v.x() + "," + v.z() + ") must not overlap the covered area");
+        }
+        // The ring must actually hug the notch, not skip past it -- (3,2) sits directly outside the
+        // covered bottom strip's top edge, right next to the reflex corner.
+        assertTrue(ring.contains(new Geometry.Polygon.Vertex(3, 2)));
+    }
+
+    @Test
+    void supercoverLineHasNoDiagonalGap() {
+        List<Geometry.Polygon.Vertex> cells = Geometry.Polygon.supercoverLine(
+                new Geometry.Polygon.Vertex(0, 0), new Geometry.Polygon.Vertex(3, 3));
+
+        for (int i = 1; i < cells.size(); i++) {
+            Geometry.Polygon.Vertex a = cells.get(i - 1);
+            Geometry.Polygon.Vertex b = cells.get(i);
+            int stepX = Math.abs(b.x() - a.x());
+            int stepZ = Math.abs(b.z() - a.z());
+            assertTrue(stepX <= 1 && stepZ <= 1 && stepX + stepZ >= 1, "Consecutive cells must be orthogonally or diagonally adjacent");
+        }
+        assertTrue(cells.contains(new Geometry.Polygon.Vertex(0, 0)));
+        assertTrue(cells.contains(new Geometry.Polygon.Vertex(3, 3)));
+    }
+
+    @Test
     void polygonRoundTripsThroughCodec() {
         Geometry.Polygon original = new Geometry.Polygon(List.of(
                 new Geometry.Polygon.Vertex(0, 0),
