@@ -220,6 +220,31 @@ class GeometryTest {
     }
 
     @Test
+    void expandedByFollowsAConcaveShapeInsteadOfCuttingAcrossItsNotch() {
+        // A "U" shape opening upward: a wide notch (x 6..13, z 4..19) between two arms (x 0..5 and
+        // x 14..19). Regression coverage for a live playtest report -- the plot buffer previously
+        // used radial scale-from-centroid, which cuts straight across a concave notch like this
+        // instead of following the shape's own boundary.
+        List<Geometry.Polygon.Vertex> uShape = List.of(
+                new Geometry.Polygon.Vertex(0, 0), new Geometry.Polygon.Vertex(20, 0),
+                new Geometry.Polygon.Vertex(20, 20), new Geometry.Polygon.Vertex(14, 20),
+                new Geometry.Polygon.Vertex(14, 4), new Geometry.Polygon.Vertex(6, 4),
+                new Geometry.Polygon.Vertex(6, 20), new Geometry.Polygon.Vertex(0, 20));
+        Geometry.Polygon polygon = Geometry.Polygon.coveringBlocks(uShape);
+
+        Geometry.Polygon buffered2 = Geometry.Polygon.expandedBy(polygon, 2);
+        Geometry.Polygon buffered5 = Geometry.Polygon.expandedBy(polygon, 5);
+
+        // Deep in the notch's open mouth (chebyshev distance 4 from the nearest arm) -- a buffer of
+        // 2 must not bridge across it, but one wide enough (5) eventually reaches across.
+        assertFalse(buffered2.contains(9, 10), "A small buffer must not cut across the notch");
+        assertTrue(buffered5.contains(9, 10));
+        // The buffer must still contain everything the original shape did.
+        assertTrue(buffered2.contains(2, 10));
+        assertTrue(buffered2.contains(17, 10));
+    }
+
+    @Test
     void supercoverLineHasNoDiagonalGap() {
         List<Geometry.Polygon.Vertex> cells = Geometry.Polygon.supercoverLine(
                 new Geometry.Polygon.Vertex(0, 0), new Geometry.Polygon.Vertex(3, 3));

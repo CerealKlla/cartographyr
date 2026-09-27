@@ -301,6 +301,63 @@ public sealed interface Geometry permits Geometry.Point, Geometry.Bounds, Geomet
          * preview while staking, should trace.
          */
         public static List<Vertex> outerRing(Polygon polygon) {
+            Set<Long> covered = coveredSetFromContains(polygon);
+            Set<Long> ring = new LinkedHashSet<>();
+            for (long cellKey : covered) {
+                int x = unpackX(cellKey);
+                int z = unpackZ(cellKey);
+                addIfUncovered(covered, ring, x - 1, z);
+                addIfUncovered(covered, ring, x + 1, z);
+                addIfUncovered(covered, ring, x, z - 1);
+                addIfUncovered(covered, ring, x, z + 1);
+            }
+            List<Vertex> result = new ArrayList<>(ring.size());
+            for (long key : ring) {
+                result.add(new Vertex(unpackX(key), unpackZ(key)));
+            }
+            return result;
+        }
+
+        /**
+         * A version of {@code polygon} grown outward by {@code blocks}, following its own shape --
+         * for a buffer/padding zone (e.g. a plot's "Town Proper" or a settlement's outer "No Man's
+         * Land") that must hug a concave shape's real boundary rather than cut across an indentation.
+         * Grown via 8-connected (king-move) multi-source expansion from every covered block, so it
+         * only ever spreads from blocks the shape actually occupies -- unlike the older radial-
+         * scale-from-centroid technique this replaced (2026-09-27, live playtest: a C-shaped plot's
+         * buffer cut straight across the C's open notch instead of following it, since scaling every
+         * vertex away from one shared center point doesn't know about the shape's own concavity at
+         * all). 8-connectivity gives a reasonably round/octagonal buffer instead of a diamond
+         * (4-connectivity's Manhattan-distance artifact) -- a deliberate, precedent-consistent
+         * approximation of a true circular offset, not an exact one.
+         */
+        public static Polygon expandedBy(Polygon polygon, int blocks) {
+            Set<Long> all = coveredSetFromContains(polygon);
+            Set<Long> frontier = all;
+            for (int layer = 0; layer < blocks; layer++) {
+                Set<Long> next = new HashSet<>();
+                for (long cellKey : frontier) {
+                    int x = unpackX(cellKey);
+                    int z = unpackZ(cellKey);
+                    for (int dx = -1; dx <= 1; dx++) {
+                        for (int dz = -1; dz <= 1; dz++) {
+                            if (dx == 0 && dz == 0) {
+                                continue;
+                            }
+                            long neighbor = packBlock(x + dx, z + dz);
+                            if (!all.contains(neighbor)) {
+                                next.add(neighbor);
+                            }
+                        }
+                    }
+                }
+                all.addAll(next);
+                frontier = next;
+            }
+            return new Polygon(traceOuterBoundary(all));
+        }
+
+        private static Set<Long> coveredSetFromContains(Polygon polygon) {
             int minX = Integer.MAX_VALUE;
             int maxX = Integer.MIN_VALUE;
             int minZ = Integer.MAX_VALUE;
@@ -319,20 +376,7 @@ public sealed interface Geometry permits Geometry.Point, Geometry.Bounds, Geomet
                     }
                 }
             }
-            Set<Long> ring = new LinkedHashSet<>();
-            for (long cellKey : covered) {
-                int x = unpackX(cellKey);
-                int z = unpackZ(cellKey);
-                addIfUncovered(covered, ring, x - 1, z);
-                addIfUncovered(covered, ring, x + 1, z);
-                addIfUncovered(covered, ring, x, z - 1);
-                addIfUncovered(covered, ring, x, z + 1);
-            }
-            List<Vertex> result = new ArrayList<>(ring.size());
-            for (long key : ring) {
-                result.add(new Vertex(unpackX(key), unpackZ(key)));
-            }
-            return result;
+            return covered;
         }
 
         private static void addIfUncovered(Set<Long> covered, Set<Long> ring, int x, int z) {
