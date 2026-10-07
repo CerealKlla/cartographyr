@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
@@ -363,6 +364,52 @@ class CartographySavedDataTest {
 
         CartographySavedData reloaded = simulateReload(data);
         assertEquals(Optional.of(ProtectionLevel.NO_VOXEL_CHANGE_FULL_HEIGHT), reloaded.getProtectionLevel(created.id()));
+    }
+
+    @Test
+    void boxRegistersResolvesAndSurvivesReload() {
+        CartographySavedData data = new CartographySavedData();
+        UUID boxId = UUID.randomUUID();
+        GlobalPos pos = GlobalPos.of(Level.OVERWORLD, new BlockPos(5, 64, 5));
+
+        assertEquals(Optional.empty(), data.getBoxLocation(boxId));
+
+        data.registerBox(boxId, pos);
+        assertEquals(Optional.of(pos), data.getBoxLocation(boxId));
+
+        CartographySavedData reloaded = simulateReload(data);
+        assertEquals(Optional.of(pos), reloaded.getBoxLocation(boxId));
+    }
+
+    @Test
+    void unregisterBoxPurgesLocationAndGetBoxesAtResults() {
+        CartographySavedData data = new CartographySavedData();
+        UUID boxId = UUID.randomUUID();
+        GlobalPos pos = GlobalPos.of(Level.OVERWORLD, new BlockPos(5, 64, 5));
+        data.registerBox(boxId, pos);
+
+        Geometry.Bounds area = new Geometry.Bounds(0, 0, 15, 15);
+        assertEquals(Set.of(boxId), data.getBoxesAt(Level.OVERWORLD, area));
+
+        data.unregisterBox(boxId);
+        assertEquals(Optional.empty(), data.getBoxLocation(boxId));
+        assertEquals(Set.of(), data.getBoxesAt(Level.OVERWORLD, area));
+    }
+
+    @Test
+    void getBoxesAtFiltersByExactGeometryNotJustChunkCandidate() {
+        CartographySavedData data = new CartographySavedData();
+        UUID inside = UUID.randomUUID();
+        UUID outside = UUID.randomUUID();
+        UUID wrongDimension = UUID.randomUUID();
+
+        data.registerBox(inside, GlobalPos.of(Level.OVERWORLD, new BlockPos(5, 64, 5)));
+        // Same chunk cell as a naive bounding-box check might assume, but outside the real Bounds.
+        data.registerBox(outside, GlobalPos.of(Level.OVERWORLD, new BlockPos(20, 64, 20)));
+        data.registerBox(wrongDimension, GlobalPos.of(Level.NETHER, new BlockPos(5, 64, 5)));
+
+        Geometry.Bounds area = new Geometry.Bounds(0, 0, 15, 15);
+        assertEquals(Set.of(inside), data.getBoxesAt(Level.OVERWORLD, area));
     }
 
     // Goes through CartographySavedData.TYPE's own codec factory, not a private test-only codec,

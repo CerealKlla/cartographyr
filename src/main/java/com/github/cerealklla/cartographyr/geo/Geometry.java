@@ -23,13 +23,14 @@ import net.minecraft.world.level.ChunkPos;
  * design document leaves room for further shapes later; new kinds slot in as additional record
  * variants plus a new dispatch case, without touching existing data.
  */
-public sealed interface Geometry permits Geometry.Point, Geometry.Bounds, Geometry.Region, Geometry.Polygon {
+public sealed interface Geometry permits Geometry.Point, Geometry.Bounds, Geometry.Region, Geometry.Polygon, Geometry.Path {
 
     Codec<Geometry> CODEC = Codec.STRING.dispatch("kind", Geometry::kind, kind -> switch (kind) {
         case "point" -> Point.MAP_CODEC;
         case "bounds" -> Bounds.MAP_CODEC;
         case "region" -> Region.MAP_CODEC;
         case "polygon" -> Polygon.MAP_CODEC;
+        case "path" -> Path.MAP_CODEC;
         default -> throw new IllegalArgumentException("Unknown geometry kind: " + kind);
     });
 
@@ -235,6 +236,40 @@ public sealed interface Geometry permits Geometry.Point, Geometry.Bounds, Geomet
                 maxZ = Math.max(maxZ, v.z());
             }
             return new ChunkPos(maxX >> 4, maxZ >> 4);
+        }
+
+        /**
+         * 0.0 if {@code (x, z)} is inside; otherwise the Euclidean distance from the point to the
+         * nearest edge segment. Used by Settlemynts' Construction Box carry-item revert check ("more
+         * than 3 blocks outside the plot") -- deliberately a real distance-to-boundary, not a
+         * bounding-box or centroid distance, so a point just outside a concave notch isn't
+         * mis-measured as far away.
+         */
+        public double distanceOutside(int x, int z) {
+            if (contains(x, z)) {
+                return 0.0;
+            }
+            double best = Double.MAX_VALUE;
+            int n = vertices.size();
+            for (int i = 0, j = n - 1; i < n; j = i++) {
+                Vertex a = vertices.get(j);
+                Vertex b = vertices.get(i);
+                best = Math.min(best, distanceToSegment(x, z, a.x(), a.z(), b.x(), b.z()));
+            }
+            return best;
+        }
+
+        private static double distanceToSegment(double px, double pz, double ax, double az, double bx, double bz) {
+            double dx = bx - ax;
+            double dz = bz - az;
+            double lenSq = dx * dx + dz * dz;
+            double t = lenSq == 0 ? 0 : ((px - ax) * dx + (pz - az) * dz) / lenSq;
+            t = Math.max(0, Math.min(1, t));
+            double closestX = ax + t * dx;
+            double closestZ = az + t * dz;
+            double ddx = px - closestX;
+            double ddz = pz - closestZ;
+            return Math.sqrt(ddx * ddx + ddz * ddz);
         }
 
         public record Vertex(int x, int z) {
@@ -593,6 +628,117 @@ public sealed interface Geometry permits Geometry.Point, Geometry.Bounds, Geomet
         }
 
         /**
+         * A lossy, opt-in simplification for a polygon whose vertex count came from block-level
+         * boundary tracing ({@code coveringBlocks}/{@code expandedBy}) -- a diagonal edge through
+         * that tracing doesn't come out as one straight segment, it comes out as a one-block
+         * staircase (a genuine direction change every single step at block resolution), which {@code
+         * coveringBlocks}' own {@code simplifyCollinear} pass can't touch at all (it only removes
+         * *exactly* straight runs). Real bug found 2026-10-05: 21 placed settlement perimeter stakes,
+         * fitted to a ~200-block-wide shape, produced a 486-vertex registered Cartographyr polygon --
+         * enough to visibly lag Lyfe's minimap once it came into view.
+         *
+         * <p><b>Deliberately not applied inside {@code coveringBlocks}/{@code outerRing}/{@code
+         * expandedBy} themselves</b> -- those exist specifically to give Plot subdivision exact
+         * block-level reflex-corner precision (a notch block must never leak in or out), and this
+         * simplification is lossy by nature: at the staircase's own scale, it genuinely cannot tell a
+         * diagonal line's rasterization noise apart from a real, small, deliberately-placed notch
+         * (confirmed by {@code GeometryTest} itself -- applying this tolerance unconditionally inside
+         * {@code traceOuterBoundary} broke the existing reflex-corner regression tests, since their
+         * notches are only a block or two deep, the same scale as this tolerance). It's safe to call
+         * explicitly on a polygon about to be *registered or rendered*, where losing a block or two of
+         * precision along a long diagonal is an acceptable trade-off already precedented by {@code
+         * expandedBy}'s own 8-connected "octagonal, not a true circular offset" approximation -- not
+         * safe to bake into the exact block-membership primitives themselves.
+         *
+         * @param toleranceBlocks max perpendicular deviation (in blocks) a removed vertex may have
+         *     introduced -- keep this small (comfortably under the smallest real notch depth the
+         *     caller ever expects) since it trades precision for vertex count.
+         */
+        public Polygon simplified(double toleranceBlocks) {
+            List<Vertex> cycle = vertices();
+            if (cycle.size() < 5) {
+                return this; // Nothing a staircase-scale tolerance could usefully remove.
+            }
+            int n = cycle.size();
+            long bestDistSq = -1;
+            int bi = 0;
+            int bj = 0;
+            for (int i = 0; i < n; i++) {
+                for (int j = i + 1; j < n; j++) {
+                    long dx = cycle.get(i).x() - cycle.get(j).x();
+                    long dz = cycle.get(i).z() - cycle.get(j).z();
+                    long distSq = dx * dx + dz * dz;
+                    if (distSq > bestDistSq) {
+                        bestDistSq = distSq;
+                        bi = i;
+                        bj = j;
+                    }
+                }
+            }
+            List<Vertex> arcA = wrapSlice(cycle, bi, bj);
+            List<Vertex> arcB = wrapSlice(cycle, bj, bi);
+            List<Vertex> simplifiedA = douglasPeucker(arcA, toleranceBlocks);
+            List<Vertex> simplifiedB = douglasPeucker(arcB, toleranceBlocks);
+            List<Vertex> result = new ArrayList<>(simplifiedA.subList(0, simplifiedA.size() - 1));
+            result.addAll(simplifiedB.subList(0, simplifiedB.size() - 1));
+            return result.size() >= 3 ? new Polygon(result) : this;
+        }
+
+        /** {@code cycle} walked forward from index {@code from} to index {@code to} inclusive, wrapping around the end. */
+        private static List<Vertex> wrapSlice(List<Vertex> cycle, int from, int to) {
+            List<Vertex> result = new ArrayList<>();
+            int n = cycle.size();
+            int i = from;
+            while (true) {
+                result.add(cycle.get(i));
+                if (i == to) {
+                    return result;
+                }
+                i = (i + 1) % n;
+            }
+        }
+
+        /** Standard open-path Douglas-Peucker -- {@code points.get(0)} and the last element are always kept. */
+        private static List<Vertex> douglasPeucker(List<Vertex> points, double epsilon) {
+            int n = points.size();
+            if (n < 3) {
+                return points;
+            }
+            Vertex a = points.get(0);
+            Vertex b = points.get(n - 1);
+            double maxDist = -1;
+            int splitIndex = -1;
+            for (int i = 1; i < n - 1; i++) {
+                double dist = perpendicularDistance(points.get(i), a, b);
+                if (dist > maxDist) {
+                    maxDist = dist;
+                    splitIndex = i;
+                }
+            }
+            if (maxDist > epsilon) {
+                List<Vertex> left = douglasPeucker(points.subList(0, splitIndex + 1), epsilon);
+                List<Vertex> right = douglasPeucker(points.subList(splitIndex, n), epsilon);
+                List<Vertex> result = new ArrayList<>(left.subList(0, left.size() - 1));
+                result.addAll(right);
+                return result;
+            }
+            return List.of(a, b);
+        }
+
+        private static double perpendicularDistance(Vertex p, Vertex a, Vertex b) {
+            double abx = b.x() - a.x();
+            double abz = b.z() - a.z();
+            double length = Math.sqrt(abx * abx + abz * abz);
+            if (length < 1.0e-9) {
+                double dx = p.x() - a.x();
+                double dz = p.z() - a.z();
+                return Math.sqrt(dx * dx + dz * dz);
+            }
+            double cross = (p.x() - a.x()) * abz - (p.z() - a.z()) * abx;
+            return Math.abs(cross) / length;
+        }
+
+        /**
          * Convex hull of {@code points} via Andrew's monotone chain algorithm — takes the (likely
          * dozens of) corner points of a structure's individual piece bounding boxes and reduces
          * them to a small, storage-cheap footprint. Returns a plain {@link Geometry}, not
@@ -653,6 +799,79 @@ public sealed interface Geometry permits Geometry.Point, Geometry.Bounds, Geomet
                 maxZ = Math.max(maxZ, v.z());
             }
             return new Bounds(minX, minZ, maxX, maxZ);
+        }
+    }
+
+    /**
+     * An ordered polyline, not a closed ring -- for anything that's a *path* between points rather
+     * than a footprint around them (added 2026-10-06, Roadways' intra-settlement road segments; see
+     * {@code Settlemynts}' own {@code roadway} package). {@code contains} is a buffered distance-to-
+     * nearest-segment test (half-width on each side of the centerline), reusing {@link
+     * Polygon#supercoverLine} to enumerate segment cells rather than a continuous-geometry distance
+     * formula -- cheap and consistent with how every other block-precise shape in this file works.
+     */
+    record Path(List<Polygon.Vertex> points, double halfWidthBlocks) implements Geometry {
+        static final MapCodec<Path> MAP_CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
+                Codec.list(Polygon.Vertex.CODEC).fieldOf("points").forGetter(Path::points),
+                Codec.DOUBLE.fieldOf("half_width_blocks").forGetter(Path::halfWidthBlocks)
+        ).apply(i, Path::new));
+
+        public Path {
+            if (points.size() < 2) {
+                throw new IllegalArgumentException("Path must have at least 2 points, got " + points.size());
+            }
+            points = List.copyOf(points);
+        }
+
+        @Override
+        public String kind() {
+            return "path";
+        }
+
+        @Override
+        public boolean contains(int x, int z) {
+            double limitSq = halfWidthBlocks * halfWidthBlocks;
+            for (int i = 0; i + 1 < points.size(); i++) {
+                if (distanceToSegmentSq(x, z, points.get(i), points.get(i + 1)) <= limitSq) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static double distanceToSegmentSq(double px, double pz, Polygon.Vertex a, Polygon.Vertex b) {
+            double abx = b.x() - a.x();
+            double abz = b.z() - a.z();
+            double lenSq = abx * abx + abz * abz;
+            double t = lenSq == 0 ? 0 : ((px - a.x()) * abx + (pz - a.z()) * abz) / lenSq;
+            t = Math.max(0, Math.min(1, t));
+            double closestX = a.x() + t * abx;
+            double closestZ = a.z() + t * abz;
+            double ddx = px - closestX;
+            double ddz = pz - closestZ;
+            return ddx * ddx + ddz * ddz;
+        }
+
+        @Override
+        public ChunkPos minChunk() {
+            int minX = Integer.MAX_VALUE;
+            int minZ = Integer.MAX_VALUE;
+            for (Polygon.Vertex v : points) {
+                minX = Math.min(minX, v.x());
+                minZ = Math.min(minZ, v.z());
+            }
+            return new ChunkPos((minX - (int) Math.ceil(halfWidthBlocks)) >> 4, (minZ - (int) Math.ceil(halfWidthBlocks)) >> 4);
+        }
+
+        @Override
+        public ChunkPos maxChunk() {
+            int maxX = Integer.MIN_VALUE;
+            int maxZ = Integer.MIN_VALUE;
+            for (Polygon.Vertex v : points) {
+                maxX = Math.max(maxX, v.x());
+                maxZ = Math.max(maxZ, v.z());
+            }
+            return new ChunkPos((maxX + (int) Math.ceil(halfWidthBlocks)) >> 4, (maxZ + (int) Math.ceil(halfWidthBlocks)) >> 4);
         }
     }
 }

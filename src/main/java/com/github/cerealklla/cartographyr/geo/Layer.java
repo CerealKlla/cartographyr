@@ -41,4 +41,14 @@ public record Layer(Identifier id, String label, int placement) {
      * separate layer from Region despite sharing one HUD row in practice.
      */
     public static final Identifier SETTLEMENT_ID = Identifier.fromNamespaceAndPath(CartographyrMod.MODID, "settlement");
+
+    /**
+     * Cartographyr's own built-in Roadway layer (added 2026-10-06, Settlemynts' Roadways feature) —
+     * placement 0, same as {@link #REGION_ID}. One {@link GeographicEntity} per paved road edge,
+     * geometry = {@link Geometry.Path}. Cartographyr only declares the layer and its default {@link
+     * ProtectionLevel} here; Settlemynts' own {@code roadway} package owns the stake/paving mechanic
+     * and enforces "nothing can damage a road block" directly (plain unbreakable block properties),
+     * not through this layer's protection level — see that mod's own context docs.
+     */
+    public static final Identifier ROADWAY_ID = Identifier.fromNamespaceAndPath(CartographyrMod.MODID, "roadway");
 }

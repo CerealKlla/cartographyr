@@ -5,6 +5,8 @@ import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 
 import com.github.cerealklla.cartographyr.api.Cartography;
+import com.github.cerealklla.cartographyr.box.BoxAttachments;
+import com.github.cerealklla.cartographyr.box.BoxPlacementListener;
 import com.github.cerealklla.cartographyr.geo.Layer;
 import com.github.cerealklla.cartographyr.geo.ProtectionLevel;
 import com.github.cerealklla.cartographyr.settlement.SettlementListener;
@@ -26,6 +28,7 @@ public class CartographyrMod {
 
     public CartographyrMod(IEventBus modEventBus, ModContainer modContainer) {
         modEventBus.addListener(this::commonSetup);
+        BoxAttachments.ATTACHMENT_TYPES.register(modEventBus);
 
         // Cartographyr's own natural regions and settlements used to share one "Location" layer;
         // split 2026-09-26 (see decisions.md) into separate Region/Settlement layers so destroying
@@ -34,6 +37,7 @@ public class CartographyrMod {
         // no longer via same-layer resolution -- see Layer.REGION_ID/SETTLEMENT_ID's own Javadoc.
         Cartography.registerLayer(new Layer(Layer.REGION_ID, "Region", 0));
         Cartography.registerLayer(new Layer(Layer.SETTLEMENT_ID, "Settlement", 1));
+        Cartography.registerLayer(new Layer(Layer.ROADWAY_ID, "Roadway", 0));
 
         // Protection level (design doc addendum, 2026-09-26) -- register the three built-ins so
         // they show up in Cartography.getRegisteredProtectionLevels, and set each new layer's own
@@ -45,6 +49,7 @@ public class CartographyrMod {
         Cartography.registerProtectionLevel(ProtectionLevel.NO_VOXEL_CHANGE_ALONG_SURFACE_AND_UP);
         Cartography.setDefaultProtectionLevel(Layer.REGION_ID, ProtectionLevel.UNPROTECTED);
         Cartography.setDefaultProtectionLevel(Layer.SETTLEMENT_ID, ProtectionLevel.NO_VOXEL_CHANGE_ALONG_SURFACE_AND_UP);
+        Cartography.setDefaultProtectionLevel(Layer.ROADWAY_ID, ProtectionLevel.UNPROTECTED);
 
         // Game-bus listener (not the mod bus above) — this is what actually triggers
         // CartographySavedData.TYPE's registration at real server boot, proving the wiring
@@ -55,6 +60,9 @@ public class CartographyrMod {
         // rather than waiting for an external caller (see settlement package + decisions.md,
         // 2026-09-24).
         NeoForge.EVENT_BUS.addListener(SettlementListener::onChunkLoad);
+
+        // Box identity (2026-10-05) -- see box.BoxPlacementListener's own doc.
+        NeoForge.EVENT_BUS.register(new BoxPlacementListener());
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {

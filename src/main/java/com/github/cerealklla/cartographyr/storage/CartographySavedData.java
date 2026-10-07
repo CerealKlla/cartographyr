@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.UnaryOperator;
 
 import com.mojang.serialization.Codec;
@@ -27,6 +28,7 @@ import com.github.cerealklla.cartographyr.geo.LifecycleState;
 import com.github.cerealklla.cartographyr.geo.ProtectionLevel;
 
 import net.minecraft.core.GlobalPos;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
@@ -53,21 +55,34 @@ public final class CartographySavedData extends SavedData {
     private int schemaVersion;
     private long nextEntityId;
     private final Map<EntityId, GeographicEntity> entities;
+    // Authoritative box-identity reverse lookup (added 2026-10-05, see decisions.md) -- UNLIKE
+    // spatialIndex/structureIndex/layerIndex below, this one IS persisted: a box's UUID lives on its
+    // own BlockEntity (box.BoxAttachments.BOX_ID), but which (dimension, pos) that UUID currently
+    // resolves to isn't derivable without a full-world chunk scan, so it's kept here directly.
+    private final Map<UUID, GlobalPos> boxLocations;
+    private final BoxIndex boxIndex = new BoxIndex();
     private final SpatialIndex spatialIndex = new SpatialIndex();
     // Reverse lookup (design doc Section 7.3). Not persisted, same as spatialIndex — rebuilt by
     // reindex() from entities' own structureReferences, which are the actual source of truth.
     private final Map<GlobalPos, EntityId> structureIndex = new HashMap<>();
+    // Layer -> entity ids (2026-10-02, see decisions.md). Not persisted, rebuilt by reindex() same
+    // as the other two indices — lets findEntities(..., Layer) below scan only the entities on the
+    // requested layer instead of every entity in the save, the real fix for a settlement lookup
+    // otherwise having to wade through however many Settlemynts plot/plot-buffer entities exist.
+    private final Map<Identifier, Set<EntityId>> layerIndex = new HashMap<>();
 
     // Package-private (not private) so the test suite in this same package can construct a fresh
     // instance directly without going through the SavedDataType machinery.
     CartographySavedData() {
-        this(SCHEMA_VERSION, 1L, new HashMap<>());
+        this(SCHEMA_VERSION, 1L, new HashMap<>(), new HashMap<>());
     }
 
-    private CartographySavedData(int schemaVersion, long nextEntityId, Map<EntityId, GeographicEntity> entities) {
+    private CartographySavedData(int schemaVersion, long nextEntityId, Map<EntityId, GeographicEntity> entities,
+                                  Map<UUID, GlobalPos> boxLocations) {
         this.schemaVersion = schemaVersion;
         this.nextEntityId = nextEntityId;
         this.entities = entities;
+        this.boxLocations = boxLocations;
         reindex();
     }
 
@@ -75,20 +90,24 @@ public final class CartographySavedData extends SavedData {
         return RecordCodecBuilder.create(i -> i.group(
                 Codec.INT.fieldOf("schema_version").forGetter(d -> d.schemaVersion),
                 Codec.LONG.fieldOf("next_entity_id").forGetter(d -> d.nextEntityId),
-                Codec.unboundedMap(EntityId.CODEC, GeographicEntity.CODEC).fieldOf("entities").forGetter(d -> d.entities)
-        ).apply(i, (schemaVersion, nextEntityId, entities) ->
-                new CartographySavedData(schemaVersion, nextEntityId, new HashMap<>(entities))));
+                Codec.unboundedMap(EntityId.CODEC, GeographicEntity.CODEC).fieldOf("entities").forGetter(d -> d.entities),
+                Codec.unboundedMap(UUIDUtil.STRING_CODEC, GlobalPos.CODEC).optionalFieldOf("box_locations", Map.of()).forGetter(d -> d.boxLocations)
+        ).apply(i, (schemaVersion, nextEntityId, entities, boxLocations) ->
+                new CartographySavedData(schemaVersion, nextEntityId, new HashMap<>(entities), new HashMap<>(boxLocations))));
     }
 
-    /** Rebuilds both secondary indices from {@link #entities}, the actual source of truth. */
+    /** Rebuilds all secondary indices from their respective sources of truth ({@link #entities}, {@link #boxLocations}). */
     private void reindex() {
         spatialIndex.rebuild(entities.values());
         structureIndex.clear();
+        layerIndex.clear();
         for (GeographicEntity entity : entities.values()) {
             for (GlobalPos structureReference : entity.structureReferences()) {
                 structureIndex.put(structureReference, entity.id());
             }
+            layerIndex.computeIfAbsent(entity.layerId(), k -> new HashSet<>()).add(entity.id());
         }
+        boxIndex.rebuild(boxLocations);
     }
 
     /** @apiNote Not the intended integration point — use {@code Cartography.createEntity} instead. */
@@ -295,11 +314,65 @@ public final class CartographySavedData extends SavedData {
     }
 
     /**
+     * @apiNote Not the intended integration point — use {@code Cartography.findEntities(..., Layer)} instead.
+     * Unlike {@link #findEntities(ResourceKey, Classification)}, this only scans {@link #layerIndex}'s
+     * entry for {@code layerId} rather than every entity in the save (design doc's layer split exists
+     * precisely so a caller that only cares about one layer, e.g. settlements, never has to wade
+     * through however many entities a different layer — e.g. a settlement's plots — happens to hold).
+     */
+    public Set<GeographicEntity> findEntities(ResourceKey<Level> dimension, Classification classification, Identifier layerId) {
+        Set<GeographicEntity> result = new HashSet<>();
+        for (EntityId candidateId : layerIndex.getOrDefault(layerId, Set.of())) {
+            GeographicEntity entity = entities.get(candidateId);
+            if (entity != null && entity.classification().equals(classification) && entity.dimension().equals(dimension)) {
+                result.add(entity);
+            }
+        }
+        return result;
+    }
+
+    /**
      * @apiNote Not the intended integration point — use {@code Cartography.getRegionBounds} instead.
      * Generic over any entity, not just natural ones — the underlying operation doesn't need the
      * restriction the design doc's wording implies.
      */
     public Optional<Geometry> getRegionBounds(EntityId id) {
         return getEntity(id).map(GeographicEntity::geometry);
+    }
+
+    /** @apiNote Not the intended integration point — use {@code Cartography.registerBox} instead. */
+    public void registerBox(UUID boxId, GlobalPos pos) {
+        boxLocations.put(boxId, pos);
+        boxIndex.put(boxId, pos);
+        setDirty();
+    }
+
+    /** @apiNote Not the intended integration point — use {@code Cartography.unregisterBox} instead. */
+    public void unregisterBox(UUID boxId) {
+        if (boxLocations.remove(boxId) != null) {
+            boxIndex.remove(boxId);
+            setDirty();
+        }
+    }
+
+    /** @apiNote Not the intended integration point — use {@code Cartography.getBoxLocation} instead. */
+    public Optional<GlobalPos> getBoxLocation(UUID boxId) {
+        return Optional.ofNullable(boxLocations.get(boxId));
+    }
+
+    /**
+     * @apiNote Not the intended integration point — use {@code Cartography.getBoxesAt} instead.
+     * Same candidate-then-exact-filter shape as {@link #getEntitiesAt}, just over {@link #boxIndex}
+     * instead of {@link #spatialIndex}.
+     */
+    public Set<UUID> getBoxesAt(ResourceKey<Level> dimension, Geometry geometry) {
+        Set<UUID> result = new HashSet<>();
+        for (UUID candidate : boxIndex.candidatesInRange(dimension, geometry)) {
+            GlobalPos pos = boxLocations.get(candidate);
+            if (pos != null && pos.dimension().equals(dimension) && geometry.contains(pos.pos().getX(), pos.pos().getZ())) {
+                result.add(candidate);
+            }
+        }
+        return result;
     }
 }

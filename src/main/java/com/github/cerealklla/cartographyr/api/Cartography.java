@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.UnaryOperator;
 
 import com.github.cerealklla.cartographyr.geo.Amenity;
@@ -31,6 +32,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.Container;
 import net.minecraft.world.level.Level;
 
 /**
@@ -315,6 +317,20 @@ public final class Cartography {
         return findEntities(level.getServer(), level.dimension(), classification);
     }
 
+    /**
+     * Every entity in {@code dimension} matching both {@code classification} and {@code layerId} —
+     * e.g. all settlements, without also scanning whatever plot/plot-buffer entities a different
+     * mod has registered under a different layer. Indexed by layer internally, unlike the
+     * classification-only overload above.
+     */
+    public static Set<GeographicEntity> findEntities(MinecraftServer server, ResourceKey<Level> dimension, Classification classification, Identifier layerId) {
+        return data(server).findEntities(dimension, classification, layerId);
+    }
+
+    public static Set<GeographicEntity> findEntities(ServerLevel level, Classification classification, Identifier layerId) {
+        return findEntities(level.getServer(), level.dimension(), classification, layerId);
+    }
+
     public static Optional<Geometry> getRegionBounds(MinecraftServer server, EntityId id) {
         return data(server).getRegionBounds(id);
     }
@@ -401,5 +417,80 @@ public final class Cartography {
 
     public static Optional<ProtectionLevel> getProtectionLevel(ServerLevel level, EntityId id) {
         return getProtectionLevel(level.getServer(), id);
+    }
+
+    // Box identity (added 2026-10-05, see decisions.md) -- any storage box's durable UUID and a
+    // fast reverse lookup for it. The UUID itself lives on the box's own BlockEntity (see
+    // box.BoxAttachments/box.BoxPlacementListener); these methods are about the save-wide cache of
+    // "where is that UUID right now," not the identity assignment itself.
+
+    /** Records (or updates) where {@code boxId} currently resolves to. Called by {@code box.BoxPlacementListener} at placement time. */
+    public static void registerBox(ServerLevel level, BlockPos pos, UUID boxId) {
+        data(level.getServer()).registerBox(boxId, new GlobalPos(level.dimension(), pos));
+    }
+
+    /** Purges {@code boxId} from the reverse-lookup cache -- called when its box breaks, or self-healingly by {@link #resolveBoxContainer}. */
+    public static void unregisterBox(MinecraftServer server, UUID boxId) {
+        data(server).unregisterBox(boxId);
+    }
+
+    public static void unregisterBox(ServerLevel level, UUID boxId) {
+        unregisterBox(level.getServer(), boxId);
+    }
+
+    public static Optional<GlobalPos> getBoxLocation(MinecraftServer server, UUID boxId) {
+        return data(server).getBoxLocation(boxId);
+    }
+
+    public static Optional<GlobalPos> getBoxLocation(ServerLevel level, UUID boxId) {
+        return getBoxLocation(level.getServer(), boxId);
+    }
+
+    /**
+     * The box UUID stored directly on whatever {@code Container}-implementing block entity sits at
+     * {@code pos} right now, if any -- for a caller that only has a position in hand (e.g. a plot
+     * owner pointing at a chest) and needs the id itself, not just a reverse lookup from an id
+     * already known. Reads {@code box.BoxAttachments.BOX_ID} directly so consumers never need their
+     * own reference to that internal attachment type.
+     */
+    public static Optional<UUID> getBoxIdAt(ServerLevel level, BlockPos pos) {
+        if (level.getBlockEntity(pos) instanceof net.minecraft.world.level.block.entity.BlockEntity blockEntity) {
+            return blockEntity.getExistingData(com.github.cerealklla.cartographyr.box.BoxAttachments.BOX_ID);
+        }
+        return Optional.empty();
+    }
+
+    /** Every tracked box UUID whose location falls inside {@code geometry} within {@code dimension}. */
+    public static Set<UUID> getBoxesAt(MinecraftServer server, ResourceKey<Level> dimension, Geometry geometry) {
+        return data(server).getBoxesAt(dimension, geometry);
+    }
+
+    public static Set<UUID> getBoxesAt(ServerLevel level, Geometry geometry) {
+        return getBoxesAt(level.getServer(), level.dimension(), geometry);
+    }
+
+    /**
+     * Synchronously resolves {@code boxId} to its live {@link Container}, loading the chunk on
+     * demand if needed (same one-shot technique as {@code lyfe.knowledge.TerrainMapRenderer}'s
+     * {@code Level#getChunk} use -- no held chunk ticket, no async queue). Empty if the id isn't
+     * tracked, its dimension isn't currently loaded on this server, or the position no longer holds
+     * a {@link Container} (block changed underneath it since) -- in the last case, this also
+     * opportunistically calls {@link #unregisterBox} to self-heal the stale cache entry.
+     */
+    public static Optional<Container> resolveBoxContainer(ServerLevel level, UUID boxId) {
+        Optional<GlobalPos> location = getBoxLocation(level.getServer(), boxId);
+        if (location.isEmpty()) {
+            return Optional.empty();
+        }
+        GlobalPos pos = location.get();
+        ServerLevel targetLevel = level.getServer().getLevel(pos.dimension());
+        if (targetLevel == null) {
+            return Optional.empty();
+        }
+        if (targetLevel.getBlockEntity(pos.pos()) instanceof Container container) {
+            return Optional.of(container);
+        }
+        unregisterBox(level.getServer(), boxId);
+        return Optional.empty();
     }
 }
