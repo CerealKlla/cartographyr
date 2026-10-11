@@ -44,6 +44,58 @@ public final class SettlementDiscovery {
     private SettlementDiscovery() {
     }
 
+    /**
+     * If a {@link LifecycleState#PLANNED} placeholder (see {@link SettlementPrediction}) already
+     * sits inside {@code start}'s bounding box, promotes it to {@link LifecycleState#REALIZED} with
+     * the real footprint/designation/structure association instead of creating a second,
+     * differently-named entity for the same village -- called by {@link SettlementListener} before
+     * it ever calls {@link #discover}. Returns empty if no matching placeholder exists, in which
+     * case the caller should fall back to a normal {@link #discover} call.
+     */
+    public static Optional<GeographicEntity> promotePlanned(ServerLevel level, StructureStart start) {
+        BoundingBox box = start.getBoundingBox();
+        List<GeographicEntity> planned = Cartography.findEntities(level, Classification.CONSTRUCTED, Layer.SETTLEMENT_ID).stream()
+                .filter(entity -> entity.lifecycleState() == LifecycleState.PLANNED)
+                .filter(entity -> {
+                    int cx = entity.geometry().centerBlockX();
+                    int cz = entity.geometry().centerBlockZ();
+                    return cx >= box.minX() && cx <= box.maxX() && cz >= box.minZ() && cz <= box.maxZ();
+                })
+                .toList();
+        if (planned.isEmpty()) {
+            return Optional.empty();
+        }
+        GeographicEntity target = planned.get(0);
+
+        Geometry footprint = convexHullOf(start);
+        int pieceCount = start.getPieces().size();
+        String designation = SettlementNaming.designationFor(pieceCount);
+
+        Optional<GeographicEntity> updated = Cartography.updateEntity(level, target.id(),
+                entity -> entity.withLifecycleState(LifecycleState.REALIZED).withGeometry(footprint));
+        Cartography.setDesignation(level, target.id(), designation);
+        GlobalPos structureReference = new GlobalPos(level.dimension(), start.getChunkPos().getWorldPosition());
+        Cartography.associateStructure(level, target.id(), structureReference);
+
+        CartographyrMod.LOGGER.info(
+                "Settlement discovery: promoted planned '{}' ({}) to REALIZED, {} piece(s)",
+                target.name().orElse("?"), target.id(), pieceCount);
+
+        return updated;
+    }
+
+    private static Geometry convexHullOf(StructureStart start) {
+        List<Geometry.Polygon.Vertex> corners = new ArrayList<>();
+        for (StructurePiece piece : start.getPieces()) {
+            BoundingBox box = piece.getBoundingBox();
+            corners.add(new Geometry.Polygon.Vertex(box.minX(), box.minZ()));
+            corners.add(new Geometry.Polygon.Vertex(box.minX(), box.maxZ()));
+            corners.add(new Geometry.Polygon.Vertex(box.maxX(), box.minZ()));
+            corners.add(new Geometry.Polygon.Vertex(box.maxX(), box.maxZ()));
+        }
+        return Geometry.Polygon.convexHull(corners);
+    }
+
     /** Builds and persists a new SETTLEMENT entity from {@code start}, associated to its structure. */
     public static GeographicEntity discover(ServerLevel level, StructureStart start) {
         List<Geometry.Polygon.Vertex> corners = new ArrayList<>();

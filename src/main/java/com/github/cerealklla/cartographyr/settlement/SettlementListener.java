@@ -62,6 +62,13 @@ public final class SettlementListener {
                 continue;
             }
 
+            // A quest (or anything else) may have already predicted this exact village and planned
+            // a named placeholder for it (see SettlementPrediction) -- promote that in place rather
+            // than creating a second, differently-named entity for the same real structure.
+            if (SettlementDiscovery.promotePlanned(level, start).isPresent()) {
+                continue;
+            }
+
             SettlementDiscovery.discover(level, start);
         }
     }

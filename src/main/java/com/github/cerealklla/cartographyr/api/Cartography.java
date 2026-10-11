@@ -358,6 +358,18 @@ public final class Cartography {
         return NaturalRegionDiscovery.discover(level, pos);
     }
 
+    /**
+     * Returns a real settlement (already-discovered, or freshly predicted from vanilla's own
+     * structure-placement seed math) within {@code radiusBlocks} of {@code center} -- lets a quest
+     * reference a town by name before its chunk has ever generated, without forcing that generation
+     * (design doc Section 4's PLANNED→REALIZED flow; see {@code settlement.SettlementPrediction}).
+     * Empty only if neither an existing entity nor vanilla's placement lookup finds anything within
+     * radius.
+     */
+    public static Optional<GeographicEntity> findOrPredictSettlementNear(ServerLevel level, BlockPos center, double radiusBlocks) {
+        return com.github.cerealklla.cartographyr.settlement.SettlementPrediction.findOrPredictSettlementNear(level, center, radiusBlocks);
+    }
+
     // Layer registration (design doc's "open N-layer entity model," decisions.md 2026-09-24) --
     // deliberately no MinecraftServer/ServerLevel parameter, unlike everything else in this
     // facade: layers are registered once at mod startup, before any world/server exists, and the
