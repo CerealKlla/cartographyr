@@ -249,6 +249,21 @@ public sealed interface Geometry permits Geometry.Point, Geometry.Bounds, Geomet
             if (contains(x, z)) {
                 return 0.0;
             }
+            return distanceToNearestEdge(x, z);
+        }
+
+        /**
+         * The real Euclidean distance from {@code (x, z)} to the nearest edge segment, regardless of
+         * whether the point is inside or outside the polygon -- unlike {@link #distanceOutside},
+         * which collapses EVERY contained point (whether 1 block or 100 blocks deep) to a flat 0.0.
+         * Added 2026-10-13 for Settlemynts' Highway Stake "just outside a settlement" anchor check
+         * (real live bug: a stake placed snug against a settlement's own edge sometimes lands exactly
+         * on or a hair inside the fitted polygon boundary due to integer rounding, which {@code
+         * distanceOutside} can't distinguish from "well inside town" -- both read as 0.0). A caller
+         * that only cares "is this within N blocks of the real edge, from either side" should use
+         * this instead of {@code distanceOutside}'s inside/outside-sensitive value.
+         */
+        public double distanceToNearestEdge(int x, int z) {
             double best = Double.MAX_VALUE;
             int n = vertices.size();
             for (int i = 0, j = n - 1; i < n; j = i++) {
