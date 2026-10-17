@@ -32,8 +32,12 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.CompoundContainer;
 import net.minecraft.world.Container;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.ChestBlock;
+import net.minecraft.world.level.block.DoubleBlockCombiner;
+import net.minecraft.world.level.block.state.BlockState;
 
 /**
  * The stable public entry point for Cartographyr's geographic data. Other mods should call these
@@ -499,10 +503,41 @@ public final class Cartography {
         if (targetLevel == null) {
             return Optional.empty();
         }
-        if (targetLevel.getBlockEntity(pos.pos()) instanceof Container container) {
-            return Optional.of(container);
+        if (!(targetLevel.getBlockEntity(pos.pos()) instanceof Container container)) {
+            unregisterBox(level.getServer(), boxId);
+            return Optional.empty();
         }
-        unregisterBox(level.getServer(), boxId);
-        return Optional.empty();
+        // Real report, 2026-10-17: two single chests placed adjacent form a vanilla double chest
+        // visually ("Large Chest"), but box.BoxPlacementListener mints a separate BOX_ID per
+        // ChestBlockEntity at placement time -- vanilla never merges the two block entities into
+        // one, only its own chest-open code (DoubleBlockCombiner) combines them on the fly. Left
+        // unmerged, a consumer resolving just this half would see only 27 slots, not the real 54 --
+        // e.g. Settlemynts' Auto-Drop reporting "no room" in the half that already holds an item
+        // while the other half sits empty. Merge here so any direct resolveBoxContainer caller
+        // always gets the real, full logical container regardless of which half's id it resolved.
+        Optional<BlockPos> pairedPos = getPairedBoxPosition(targetLevel, pos.pos());
+        if (pairedPos.isPresent() && targetLevel.getBlockEntity(pairedPos.get()) instanceof Container otherHalf) {
+            return Optional.of(ChestBlock.getBlockType(targetLevel.getBlockState(pos.pos())) == DoubleBlockCombiner.BlockType.FIRST
+                    ? new CompoundContainer(container, otherHalf)
+                    : new CompoundContainer(otherHalf, container));
+        }
+        return Optional.of(container);
+    }
+
+    /**
+     * If the block at {@code pos} is one half of a vanilla double chest (or any modded block
+     * extending {@link ChestBlock}), the position of its other half -- {@code Optional.empty()} for
+     * a single chest or any non-box block. Exposed publicly (not just used internally by {@link
+     * #resolveBoxContainer}) so a caller iterating a whole list of box ids -- e.g. Settlemynts'
+     * {@code api.Settlemynts#resolveBoxesForPolygon} -- can dedupe by block position and avoid
+     * double-counting a merged double chest's stock once for each half's own independently-tracked
+     * {@code BOX_ID}, without needing to know anything about vanilla chest internals itself.
+     */
+    public static Optional<BlockPos> getPairedBoxPosition(ServerLevel level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        if (!(state.getBlock() instanceof ChestBlock) || ChestBlock.getBlockType(state) == DoubleBlockCombiner.BlockType.SINGLE) {
+            return Optional.empty();
+        }
+        return Optional.of(ChestBlock.getConnectedBlockPos(pos, state));
     }
 }
