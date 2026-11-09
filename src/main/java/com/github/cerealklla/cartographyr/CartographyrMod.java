@@ -7,7 +7,10 @@ import com.mojang.logging.LogUtils;
 import com.github.cerealklla.cartographyr.api.Cartography;
 import com.github.cerealklla.cartographyr.box.BoxAttachments;
 import com.github.cerealklla.cartographyr.box.BoxPlacementListener;
+import com.github.cerealklla.cartographyr.geo.Classification;
+import com.github.cerealklla.cartographyr.geo.GeographicEntity;
 import com.github.cerealklla.cartographyr.geo.Layer;
+import com.github.cerealklla.cartographyr.geo.LifecycleState;
 import com.github.cerealklla.cartographyr.geo.ProtectionLevel;
 import com.github.cerealklla.cartographyr.settlement.SettlementListener;
 
@@ -73,5 +76,37 @@ public class CartographyrMod {
     public void onServerStarting(ServerStartingEvent event) {
         int count = Cartography.getEntitiesAt(event.getServer(), Level.OVERWORLD, 0, 0).size();
         LOGGER.info("Cartographyr geographic data loaded, {} entities at overworld origin", count);
+        retireDuplicateRealizedSettlements(event.getServer());
+    }
+
+    /**
+     * ONE-TIME data migration, added 2026-11-09 -- real bug found live (two identical
+     * "Starterville" entries, same name AND coordinates, in Arryval's starting-settlement picker):
+     * {@code settlement.SettlementDiscovery#promotePlanned} used to only ever retire the ONE
+     * placeholder it actually promoted, silently leaving any OTHER matching PLANNED placeholder for
+     * the same real village to be independently promoted later (a multi-chunk village can fire
+     * promotion more than once), producing two real REALIZED entities with identical geometry. The
+     * root cause is fixed in {@code promotePlanned} itself (new promotions can't duplicate like
+     * this anymore) -- this is purely cleanup for data already corrupted by the bug before that fix
+     * existed. Retires every REALIZED settlement entity that exactly duplicates an earlier one's
+     * footprint center, keeping the first (matches {@code promotePlanned}'s own
+     * "{@code planned.get(0)} wins" convention). Safe to run every boot (a no-op once the existing
+     * duplicates are gone) but intended to be deleted in a follow-up commit once this is confirmed
+     * clean on Production -- see "prefer a one-time fix over permanent code" in this suite's own
+     * conventions.
+     */
+    private static void retireDuplicateRealizedSettlements(net.minecraft.server.MinecraftServer server) {
+        var seenCenters = new java.util.HashSet<Long>();
+        for (GeographicEntity entity : Cartography.findEntities(server, Level.OVERWORLD, Classification.CONSTRUCTED, Layer.SETTLEMENT_ID)) {
+            if (entity.lifecycleState() != LifecycleState.REALIZED) {
+                continue;
+            }
+            long key = (((long) entity.geometry().centerBlockX()) << 32) ^ (entity.geometry().centerBlockZ() & 0xFFFFFFFFL);
+            if (!seenCenters.add(key)) {
+                Cartography.retireEntity(server, entity.id());
+                LOGGER.warn("Retired duplicate REALIZED settlement '{}' ({}) at ({}, {}) -- same footprint as an earlier entity",
+                        entity.name().orElse("?"), entity.id(), entity.geometry().centerBlockX(), entity.geometry().centerBlockZ());
+            }
+        }
     }
 }

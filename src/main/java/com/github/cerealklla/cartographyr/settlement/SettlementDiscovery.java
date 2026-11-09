@@ -66,6 +66,24 @@ public final class SettlementDiscovery {
             return Optional.empty();
         }
         GeographicEntity target = planned.get(0);
+        // Real bug found live 2026-11-09 (two identical "Starterville" entries in Arryval's
+        // starting-settlement picker, same name AND same coordinates): vanilla's seed-grid village
+        // prediction isn't precise enough to guarantee two separate "nearest village" queries from
+        // different search points always resolve to the exact same predicted coordinate, even when
+        // they really do mean the same real village once it actually generates -- so two DIFFERENT
+        // SettlementPrediction placeholders (e.g. Arryval's and Terrytories' own independent
+        // starting-settlement discovery, searching from slightly different points) can both land
+        // inside the SAME real structure's eventual bounding box. Only `target` was ever promoted
+        // here; any other matching PLANNED entity was left sitting PLANNED forever, each
+        // independently eligible to be promoted AGAIN the next time any one of a multi-chunk
+        // village's own chunks loaded -- producing two genuinely separate REALIZED entities with
+        // identical geometry. Retire every other match immediately so this can never promote a
+        // second one later.
+        for (GeographicEntity extra : planned) {
+            if (!extra.id().equals(target.id())) {
+                Cartography.retireEntity(level, extra.id());
+            }
+        }
 
         Geometry footprint = convexHullOf(start);
         int pieceCount = start.getPieces().size();
