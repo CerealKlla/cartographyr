@@ -374,6 +374,11 @@ public final class Cartography {
         return com.github.cerealklla.cartographyr.settlement.SettlementPrediction.findOrPredictSettlementNear(level, center, radiusBlocks);
     }
 
+    /** See {@code settlement.SettlementPrediction#predictSettlementAt}'s own doc. */
+    public static Optional<GeographicEntity> predictSettlementAt(ServerLevel level, BlockPos searchCenter, double radiusBlocks) {
+        return com.github.cerealklla.cartographyr.settlement.SettlementPrediction.predictSettlementAt(level, searchCenter, radiusBlocks);
+    }
+
     // Layer registration (design doc's "open N-layer entity model," decisions.md 2026-09-24) --
     // deliberately no MinecraftServer/ServerLevel parameter, unlike everything else in this
     // facade: layers are registered once at mod startup, before any world/server exists, and the

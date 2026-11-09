@@ -75,6 +75,48 @@ public final class SettlementPrediction {
         return Optional.of(created);
     }
 
+    /**
+     * Like {@link #findOrPredictSettlementNear}, but always runs the real seed-prediction lookup at
+     * {@code searchCenter} directly instead of first trying a "something's already known within
+     * radius" shortcut -- added 2026-11-06 for Arryval's starting-settlement picker, which needs to
+     * discover several genuinely distinct nearby villages by searching from several different
+     * points. {@link #findOrPredictSettlementNear}'s own "known" shortcut picks randomly among
+     * anything already registered within radius, which would keep returning the very first village
+     * ever seeded for every later search center that happens to still be within its own radius of
+     * it -- exactly the opposite of "find a different one over here instead." Still dedupes against
+     * an already-registered entity at the exact same predicted position (two search centers
+     * legitimately resolving the same real village via the same deterministic seed math), it just
+     * never substitutes a different, merely-nearby one.
+     */
+    public static Optional<GeographicEntity> predictSettlementAt(ServerLevel level, BlockPos searchCenter, double radiusBlocks) {
+        BlockPos predicted = level.findNearestMapStructure(StructureTags.VILLAGE, searchCenter, (int) radiusBlocks, false);
+        if (predicted == null) {
+            return Optional.empty();
+        }
+        Optional<GeographicEntity> existing = Cartography.findEntities(level, Classification.CONSTRUCTED, Layer.SETTLEMENT_ID).stream()
+                .filter(entity -> entity.lifecycleState() == LifecycleState.REALIZED || entity.lifecycleState() == LifecycleState.PLANNED)
+                .filter(entity -> entity.geometry().centerBlockX() == predicted.getX() && entity.geometry().centerBlockZ() == predicted.getZ())
+                .findFirst();
+        if (existing.isPresent()) {
+            return existing;
+        }
+        String name = SettlementNaming.pickName(Optional.empty(), RANDOM);
+        GeographicEntity created = Cartography.createEntity(level, new EntityDefinition(
+                level.dimension(),
+                Classification.CONSTRUCTED,
+                EntityType.SETTLEMENT,
+                Layer.SETTLEMENT_ID,
+                Optional.of(name),
+                new Geometry.Point(predicted.getX(), predicted.getZ()),
+                LifecycleState.PLANNED,
+                Optional.empty()
+        ));
+        CartographyrMod.LOGGER.info(
+                "Settlement prediction: planned '{}' ({}) at {} -- not yet generated, seed-predicted only",
+                name, created.id(), predicted);
+        return Optional.of(created);
+    }
+
     private static boolean withinRadius(GeographicEntity entity, BlockPos center, double radiusBlocks) {
         double dx = entity.geometry().centerBlockX() - center.getX();
         double dz = entity.geometry().centerBlockZ() - center.getZ();
