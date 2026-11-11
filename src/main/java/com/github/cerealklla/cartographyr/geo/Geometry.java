@@ -59,6 +59,46 @@ public sealed interface Geometry permits Geometry.Point, Geometry.Bounds, Geomet
         return (minChunk().getMiddleBlockZ() + maxChunk().getMiddleBlockZ()) / 2;
     }
 
+    /**
+     * A point guaranteed to satisfy {@link #contains(int, int)}, nearest to the coarse {@link
+     * #centerBlockX()}/{@link #centerBlockZ()} -- added 2026-11-09, real live bug: Arryval's
+     * starting-settlement teleport logic used the coarse center directly as if it were guaranteed
+     * to be inside the real structure, which this interface's own doc already disclaimed ("not
+     * exact for irregular shapes... good enough for coarse distance checks"). For an L-shaped or
+     * multi-cluster village, the bounding-box midpoint can land in real, genuinely empty space
+     * between clusters -- a real player report: "dropped in a pond in the middle of the woods, no
+     * settlement anywhere nearby," confirmed not a loading/render delay. Spirals outward ring by
+     * ring from the coarse center until it finds one that's actually contained, falling back to the
+     * coarse center itself only for a genuinely degenerate shape (smaller than one search step, or
+     * larger than {@code maxRadiusBlocks} across at its widest point from center -- vanishingly
+     * unlikely for any real settlement footprint). Any caller that needs a point guaranteed to be
+     * real, walkable structure (a teleport target, a force-load anchor) should prefer this over the
+     * coarse center directly; {@link #centerBlockX()}/{@link #centerBlockZ()} themselves are
+     * unchanged and still fine for their own documented coarse-distance use case.
+     */
+    default Point nearestContainedPoint(int maxRadiusBlocks) {
+        int centerX = centerBlockX();
+        int centerZ = centerBlockZ();
+        if (contains(centerX, centerZ)) {
+            return new Point(centerX, centerZ);
+        }
+        for (int radius = 1; radius <= maxRadiusBlocks; radius++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (int dz = -radius; dz <= radius; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) {
+                        continue; // only the current ring -- interior cells were already checked at a smaller radius.
+                    }
+                    int x = centerX + dx;
+                    int z = centerZ + dz;
+                    if (contains(x, z)) {
+                        return new Point(x, z);
+                    }
+                }
+            }
+        }
+        return new Point(centerX, centerZ);
+    }
+
     record Point(int x, int z) implements Geometry {
         static final MapCodec<Point> MAP_CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
                 Codec.INT.fieldOf("x").forGetter(Point::x),
